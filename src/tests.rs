@@ -1,5 +1,4 @@
 use crate::{get_paths, parse_args};
-use std::process::Stdio;
 
 struct Setup {
     test_program_path: &'static str,
@@ -40,15 +39,6 @@ fn program_test() {
         }
     };
     println!("{paths:?}");
-    // let p = paths[0].to_path_buf();
-    // let program = Command::new(p)
-    //     .stdout(Stdio::piped())
-    //     .output()
-    //     .expect("Failed to execute command");
-    // assert_eq!(String::from_utf8_lossy(&program.stdout), "Hello, world!\n")
-    // for p in paths {
-    //     Command::new(p).spawn();
-    // }
 }
 
 #[test]
