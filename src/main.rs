@@ -8,12 +8,13 @@ use std::env;
 
 fn main() -> Result<(), String> {
     // let (start_programs, exit_on) = parse_args(env::args().collect())?;
-    let (start_programs, exit_on) = parse_args(vec!["sma", "--start", "test_program/hello_world.exe", "--exit"]
-        .iter().map(|a| a.to_string()).collect())?;
+    let (start_programs, exit_on) = parse_args(
+        vec!["sma", "--start", "test_program/hello_world.exe"]
+            .iter()
+            .map(|a| a.to_string())
+            .collect(),
+    )?;
 
-    if start_programs.is_empty() {
-        // Err("")
-    }
     println!("Start programs: {:?}", start_programs);
     println!("Exit on:        {:?}", exit_on);
 

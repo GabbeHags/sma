@@ -1,6 +1,5 @@
-use std::path::PathBuf;
 use crate::{get_paths, parse_args};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 struct Setup {
     test_program_path: &'static str,
@@ -24,14 +23,10 @@ impl Setup {
 fn program_test() {
     let setup = Setup::new();
 
-    let args = vec![
-        "self",
-        "--start",
-        setup.test_program_path
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self", "--start", setup.test_program_path]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
     let (start, _exit) = match parse_args(args) {
         Ok(r) => r,
         Err(e) => {
@@ -98,7 +93,9 @@ fn parse_args_check_misspelled_flag_start() {
     .map(|arg| arg.to_string())
     .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "`--star` is not a valid argument.");
         }
@@ -106,15 +103,14 @@ fn parse_args_check_misspelled_flag_start() {
 }
 #[test]
 fn parse_args_argument_did_not_start_with() {
-    let args = vec![
-        "self",
-        "start",
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self", "start"]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "Argument `start` did not start with `--`");
         }
@@ -122,14 +118,11 @@ fn parse_args_argument_did_not_start_with() {
 }
 #[test]
 fn parse_args_no_args_given() {
-    let args = vec![
-        "self",
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self"].iter().map(|arg| arg.to_string()).collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "No arguments were given, this is probably a mistake");
         }
@@ -137,15 +130,14 @@ fn parse_args_no_args_given() {
 }
 #[test]
 fn parse_args_start_given_empty() {
-    let args = vec![
-        "self",
-        "--start"
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self", "--start"]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "--start was given but no argument to it were given");
         }
@@ -153,17 +145,19 @@ fn parse_args_start_given_empty() {
 }
 #[test]
 fn parse_args_exit_but_no_start() {
-    let args = vec![
-        "self",
-        "--exit"
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self", "--exit"]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
-            assert_eq!(e, "--exit was given but not --start, --exit uses the info given in --start");
+            assert_eq!(
+                e,
+                "--exit was given but not --start, --exit uses the info given in --start"
+            );
         }
     }
 }
@@ -171,17 +165,14 @@ fn parse_args_exit_but_no_start() {
 fn parse_args_exit_given_empty() {
     let setup = Setup::new();
 
-    let args = vec![
-        "self",
-        "--start",
-        setup.test_program_path,
-        "--exit"
-    ]
-    .iter()
-    .map(|arg| arg.to_string())
-    .collect();
+    let args = vec!["self", "--start", setup.test_program_path, "--exit"]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "--exit was given but no argument to it were given");
         }
@@ -203,7 +194,9 @@ fn parse_args_check_misspelled_flag_exit() {
     .map(|arg| arg.to_string())
     .collect();
     match parse_args(args) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "`--exi` is not a valid argument.")
         }
@@ -237,9 +230,14 @@ fn get_paths_not_a_file() {
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
     match get_paths(start) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
-            assert_eq!(e, r"The given path does not point to a file: `test_program\hello_worl.exe`");
+            assert_eq!(
+                e,
+                r"The given path does not point to a file: `test_program\hello_worl.exe`"
+            );
         }
     }
 
@@ -260,7 +258,9 @@ fn get_paths_not_a_exe() {
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
     match get_paths(start) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
             assert_eq!(e, "The given file is not a .exe: `\"hello_world.ex\"`")
         }
@@ -276,9 +276,14 @@ fn get_paths_no_extension() {
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
     match get_paths(start) {
-        Ok(_) => {panic!("Should not get here")}
+        Ok(_) => {
+            panic!("Should not get here")
+        }
         Err(e) => {
-            assert_eq!(e, "Something is wrong with the extension of the given file: `\"hello_world\"`")
+            assert_eq!(
+                e,
+                "Something is wrong with the extension of the given file: `\"hello_world\"`"
+            )
         }
     }
 }

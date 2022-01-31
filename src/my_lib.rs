@@ -35,17 +35,20 @@ pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), Strin
         }
     }
     if !arg_start_given && !arg_exit_on_given {
-        return Err("No arguments were given, this is probably a mistake".to_string())
+        return Err("No arguments were given, this is probably a mistake".to_string());
     }
     if arg_start_given && start_these.is_empty() {
-        return Err("--start was given but no argument to it were given".to_string())
+        return Err("--start was given but no argument to it were given".to_string());
     }
     if arg_exit_on_given {
         if !arg_start_given {
-            return Err("--exit was given but not --start, --exit uses the info given in --start".to_string())
+            return Err(
+                "--exit was given but not --start, --exit uses the info given in --start"
+                    .to_string(),
+            );
         }
         if exit_on_this.is_empty() {
-            return Err("--exit was given but no argument to it were given".to_string())
+            return Err("--exit was given but no argument to it were given".to_string());
         }
     }
 
