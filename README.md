@@ -1,2 +1,2 @@
-#Start Multiple Applications (SMA)
+# Start Multiple Applications (SMA)
 
