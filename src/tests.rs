@@ -1,3 +1,4 @@
+use std::process::{Command, Stdio};
 use crate::{get_paths, parse_args};
 
 #[test]
@@ -12,6 +13,12 @@ fn program_test() {
         Err(e) => {panic!("{e}")}
     };
     println!("{paths:?}");
+    // let p = paths[0].to_path_buf();
+    // let program = Command::new(p)
+    //     .stdout(Stdio::piped())
+    //     .output()
+    //     .expect("Failed to execute command");
+    // assert_eq!(String::from_utf8_lossy(&program.stdout), "Hello, world!\n")
 }
 
 #[test]

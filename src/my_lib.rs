@@ -43,15 +43,16 @@ pub fn get_paths(v: Vec<String>) -> Result<Vec<PathBuf>, String>{
     for program in v {
         let path = Path::new(&program);
         if !path.is_file() {
-            return Err(format!("The given path does not point to a file: {:?}", path))
+            return Err(format!("The given path does not point to a file: `{}`",
+                               path.display()))
         }
         match path.extension() {
             None => {
-                return Err(format!("Something is wrong with the extension of the given file: {:?}", path.file_name().unwrap()))
+                return Err(format!("Something is wrong with the extension of the given file: `{:?}`", path.file_name().unwrap()))
             }
             Some(extension) => {
                 if extension != "exe" {
-                    return Err(format!("The given file is not a .exe: {:?}", path.file_name().unwrap()))
+                    return Err(format!("The given file is not a .exe: `{:?}`", path.file_name().unwrap()))
                 }
             }
         }
