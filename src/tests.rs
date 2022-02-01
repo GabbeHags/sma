@@ -1,3 +1,4 @@
+use crate::my_lib::match_exit_with_start;
 use crate::{get_paths, parse_args};
 
 struct Setup {
@@ -189,6 +190,75 @@ fn parse_args_check_misspelled_flag_exit() {
         }
         Err(e) => {
             assert_eq!(e, "`--exi` is not a valid argument.")
+        }
+    }
+}
+#[test]
+fn parse_args_more_than_one_arg_on_exit() {
+    let setup = Setup::new();
+    let args = vec![
+        "self",
+        "--start",
+        setup.test_program_path,
+        "2",
+        "3",
+        "--exit",
+        "2",
+        "3",
+    ]
+    .iter()
+    .map(|arg| arg.to_string())
+    .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "--exit only accepts 1 argument but, 2 were given.")
+        }
+    }
+}
+#[test]
+fn match_exit_with_start_not_correct_file_name() {
+    let setup = Setup::new();
+    let v: Vec<String> = vec![
+        setup.test_program_path,
+        "..",
+    ]
+    .iter()
+    .map(|arg| arg.to_string())
+    .collect();
+    match match_exit_with_start("2", &v) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "`..` does not have a correct file name.")
+        }
+    }
+}
+#[test]
+fn match_exit_with_start_no_match() {
+    let v: Vec<String> = vec!["a/b/c/d.exe"].iter().map(|arg| arg.to_string()).collect();
+    match match_exit_with_start("aaa.exe", &v) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "`aaa.exe` does not match with any argument in --start")
+        }
+    }
+}
+
+#[test]
+fn match_exit_with_start_match_with_multiple() {
+    let v: Vec<String> = vec!["a/b/c/d.exe", "a/b/c/d.exe"].iter().map(|arg| arg.to_string()).collect();
+    match match_exit_with_start("d.exe", &v) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "The --start arguments got two or more matching with the --exit")
         }
     }
 }

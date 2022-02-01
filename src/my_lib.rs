@@ -34,6 +34,7 @@ pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), Strin
             }
         }
     }
+    // Error checking on the parsing.
     if !arg_start_given && !arg_exit_on_given {
         return Err("No arguments were given, this is probably a mistake".to_string());
     }
@@ -47,12 +48,48 @@ pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), Strin
                     .to_string(),
             );
         }
-        if exit_on_this.is_empty() {
+        if exit_on_this.len() == 1 {
+            match_exit_with_start(&exit_on_this[0], &start_these)?
+        } else if exit_on_this.len() > 1 {
+            return Err(format!(
+                "--exit only accepts 1 argument but, {} were given.",
+                exit_on_this.len()
+            ));
+        } else if exit_on_this.is_empty() {
             return Err("--exit was given but no argument to it were given".to_string());
         }
     }
 
     Ok((start_these, exit_on_this))
+}
+
+pub fn match_exit_with_start(exit: &str, starts: &[String]) -> Result<(), String> {
+    let mut is_match = false;
+    for start in starts {
+        let path = Path::new(start);
+        let f_name = match path.file_name() {
+            None => return Err(format!("`{start}` does not have a correct file name.")),
+            Some(f) => match f.to_str() {
+                None => return Err(format!("`{start}` contains invalid unicode character.")),
+                Some(s) => s,
+            },
+        };
+        let tmp_match = f_name == exit;
+        if is_match && tmp_match {
+            return Err(
+                "The --start arguments got two or more matching with the --exit".to_string(),
+            );
+        } else if tmp_match {
+            is_match = tmp_match
+        }
+    }
+    if !is_match {
+        return Err(format!(
+            "`{}` does not match with any argument in --start",
+            exit
+        ));
+    }
+    Ok(())
 }
 
 pub fn get_paths(v: Vec<String>) -> Result<Vec<PathBuf>, String> {
