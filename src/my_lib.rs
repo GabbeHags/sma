@@ -92,7 +92,7 @@ pub fn match_exit_with_start(exit: &str, starts: &[String]) -> Result<(), String
     Ok(())
 }
 
-pub fn get_paths(v: Vec<String>) -> Result<Vec<PathBuf>, String> {
+pub fn get_paths(v: &Vec<String>) -> Result<Vec<PathBuf>, String> {
     let mut paths = Vec::new();
     for program in v {
         let path = Path::new(&program);
@@ -123,8 +123,12 @@ pub fn get_paths(v: Vec<String>) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
-fn start_program(path: &Path, args: &[String]) -> Result<Child, String> {
-    match Command::new(path).args(args).spawn() {
+pub fn start_program(path: &Path, args: Option<&[String]>) -> Result<Child, String> {
+    let mut cmd = Command::new(path);
+    if let Some(args) = args {
+        cmd.args(args);
+    }
+    match cmd.spawn() {
         Ok(child) => Ok(child),
         Err(e) => Err(format!(
             "Failed to start {:?}, given error was: {e}",

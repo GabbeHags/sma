@@ -11,10 +11,10 @@ struct Setup {
 impl Setup {
     fn new() -> Self {
         Self {
-            test_program_path: r"test_program\hello_world.exe",
-            test_program_path_wrong_extension: r"test_program\hello_world.ex",
-            test_program_path_wrong_path: r"test_program\hello_worl.exe",
-            test_program_path_no_extension: r"test_program\hello_world",
+            test_program_path: r"test_program\test.exe",
+            test_program_path_wrong_extension: r"test_program\test.ex",
+            test_program_path_wrong_path: r"test_program\tes.exe",
+            test_program_path_no_extension: r"test_program\test",
         }
     }
 }
@@ -33,7 +33,7 @@ fn program_test() {
             panic!("{e}")
         }
     };
-    let paths = match get_paths(start) {
+    let paths = match get_paths(&start) {
         Ok(r) => r,
         Err(e) => {
             panic!("{e}")
@@ -272,7 +272,7 @@ fn get_paths_valid_input() {
         .map(|arg| arg.to_string())
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
-    let paths = match get_paths(start) {
+    let paths = match get_paths(&start) {
         Ok(r) => r,
         Err(e) => {
             panic!("{e}")
@@ -288,15 +288,15 @@ fn get_paths_not_a_file() {
         .iter()
         .map(|arg| arg.to_string())
         .collect();
-    let (start, _exit) = parse_args(args).unwrap();
-    match get_paths(start) {
+    let (start, _) = parse_args(args).unwrap();
+    match get_paths(&start) {
         Ok(_) => {
             panic!("Should not get here")
         }
         Err(e) => {
             assert_eq!(
                 e,
-                r"The given path does not point to a file: `test_program\hello_worl.exe`"
+                r"The given path does not point to a file: `test_program\tes.exe`"
             );
         }
     }
@@ -306,7 +306,7 @@ fn get_paths_not_a_file() {
         .map(|arg| arg.to_string())
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
-    assert!(get_paths(start).is_err());
+    assert!(get_paths(&start).is_err());
 }
 #[test]
 fn get_paths_not_a_exe() {
@@ -317,12 +317,12 @@ fn get_paths_not_a_exe() {
         .map(|arg| arg.to_string())
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
-    match get_paths(start) {
+    match get_paths(&start) {
         Ok(_) => {
             panic!("Should not get here")
         }
         Err(e) => {
-            assert_eq!(e, "The given file is not a .exe: `\"hello_world.ex\"`")
+            assert_eq!(e, "The given file is not a .exe: `\"test.ex\"`")
         }
     }
 }
@@ -335,14 +335,14 @@ fn get_paths_no_extension() {
         .map(|arg| arg.to_string())
         .collect();
     let (start, _exit) = parse_args(args).unwrap();
-    match get_paths(start) {
+    match get_paths(&start) {
         Ok(_) => {
             panic!("Should not get here")
         }
         Err(e) => {
             assert_eq!(
                 e,
-                "Something is wrong with the extension of the given file: `\"hello_world\"`"
+                "Something is wrong with the extension of the given file: `\"test\"`"
             )
         }
     }
