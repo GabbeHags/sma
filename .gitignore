@@ -2,6 +2,3 @@
 .idea
 Cargo.lock
 *.pdb
-test_program/test
-test_program/test.ex
-test_program/test.exe
