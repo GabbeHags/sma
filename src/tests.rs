@@ -89,13 +89,13 @@ fn parse_args_with_args() {
         .map(|arg| arg.to_string())
         .collect();
     match parse_args(args) {
-        Ok((ps, e)) => {
+        Ok((ps, _)) => {
             let p = &ps[0];
             let arg = p.args.as_ref().unwrap().get(0).unwrap().as_str();
             assert_eq!(p.path.as_path(), Path::new(setup.test_program_path));
             assert_eq!(arg, "2");
         }
-        Err(e) => {
+        Err(_) => {
             panic!("Should not get here");
         }
     }
@@ -117,7 +117,7 @@ fn parse_args_with_args_2() {
             assert_eq!(arg_1, "2");
             assert_eq!(arg_2, "3");
         }
-        Err(e) => {
+        Err(_) => {
             panic!("Should not get here");
         }
     }
@@ -238,133 +238,107 @@ fn parse_args_more_than_one_arg_on_exit() {
         }
     }
 }
-// #[test]
-// fn match_exit_with_start_not_correct_file_name() {
-//     let setup = Setup::new();
-//     let v: Vec<String> = vec![
-//         setup.test_program_path,
-//         "..",
-//     ]
-//     .iter()
-//     .map(|arg| arg.to_string())
-//     .collect();
-//
-//     match match_exit_with_start("2", &v) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(e, "`..` does not have a correct file name.")
-//         }
-//     }
-// }
-// #[test]
-// fn match_exit_with_start_no_match() {
-//     let v: Vec<String> = vec!["a/b/c/d.exe"].iter().map(|arg| arg.to_string()).collect();
-//     match match_exit_with_start("aaa.exe", &v) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(e, "`aaa.exe` does not match with any argument in --start")
-//         }
-//     }
-// }
-//
-// #[test]
-// fn match_exit_with_start_match_with_multiple() {
-//     let v: Vec<String> = vec!["a/b/c/d.exe", "a/b/c/d.exe"].iter().map(|arg| arg.to_string()).collect();
-//     match match_exit_with_start("d.exe", &v) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(e, "The --start arguments got two or more matching with the --exit")
-//         }
-//     }
-// }
+#[test]
+fn match_exit_with_start_no_match() {
+    let setup = Setup::new();
+    let args = vec![
+        "self",
+        "--start",
+        setup.test_program_path,
+        "--exit",
+        "no_match",
+    ]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "`no_match` does not match with any argument in --start")
+        }
+    }
+}
 
-// #[test]
-// fn get_paths_valid_input() {
-//     let setup = Setup::new();
-//
-//     let args = vec!["self", "--start", setup.test_program_path]
-//         .iter()
-//         .map(|arg| arg.to_string())
-//         .collect();
-//     let (start, _exit) = parse_args(args).unwrap();
-//     let paths = match get_paths(&start) {
-//         Ok(r) => r,
-//         Err(e) => {
-//             panic!("{e}")
-//         }
-//     };
-//     assert_eq!(paths.len(), 1);
-// }
-// #[test]
-// fn get_paths_not_a_file() {
-//     let setup = Setup::new();
-//
-//     let args = vec!["self", "--start", setup.test_program_path_wrong_path]
-//         .iter()
-//         .map(|arg| arg.to_string())
-//         .collect();
-//     let (start, _) = parse_args(args).unwrap();
-//     match get_paths(&start) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(
-//                 e,
-//                 r"The given path does not point to a file: `test_program\tes.exe`"
-//             );
-//         }
-//     }
-//
-//     let args = vec!["self", "--start", setup.test_program_path_wrong_extension]
-//         .iter()
-//         .map(|arg| arg.to_string())
-//         .collect();
-//     let (start, _exit) = parse_args(args).unwrap();
-//     assert!(get_paths(&start).is_err());
-// }
-// #[test]
-// fn get_paths_not_a_exe() {
-//     let setup = Setup::new();
-//
-//     let args = vec!["self", "--start", setup.test_program_path_wrong_extension]
-//         .iter()
-//         .map(|arg| arg.to_string())
-//         .collect();
-//     let (start, _exit) = parse_args(args).unwrap();
-//     match get_paths(&start) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(e, "The given file is not a .exe: `\"test.ex\"`")
-//         }
-//     }
-// }
-// #[test]
-// fn get_paths_no_extension() {
-//     let setup = Setup::new();
-//
-//     let args = vec!["self", "--start", setup.test_program_path_no_extension]
-//         .iter()
-//         .map(|arg| arg.to_string())
-//         .collect();
-//     let (start, _exit) = parse_args(args).unwrap();
-//     match get_paths(&start) {
-//         Ok(_) => {
-//             panic!("Should not get here")
-//         }
-//         Err(e) => {
-//             assert_eq!(
-//                 e,
-//                 "Something is wrong with the extension of the given file: `\"test\"`"
-//             )
-//         }
-//     }
-// }
+#[test]
+fn match_exit_with_start_match_with_multiple() {
+    let setup = Setup::new();
+    let args = vec![
+        "self",
+        "--start",
+        setup.test_program_path,
+        setup.test_program_path,
+        "--exit",
+        "test.exe",
+    ]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "The --start arguments got two or more matching with the --exit")
+        }
+    }
+}
+
+#[test]
+fn get_paths_not_a_file_1() {
+    let setup = Setup::new();
+
+    let args = vec!["self", "--start", setup.test_program_path_wrong_path]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(
+                e,
+                r"The given path does not point to a file: `test_program\tes.exe`"
+            );
+        }
+    }
+}
+#[test]
+fn get_paths_not_a_exe() {
+    let setup = Setup::new();
+
+    let args = vec!["self", "--start", setup.test_program_path_wrong_extension]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(e, "The given file is not a .exe: `\"test.ex\"`")
+        }
+    }
+}
+#[test]
+fn get_paths_no_extension() {
+    let setup = Setup::new();
+
+    let args = vec!["self", "--start", setup.test_program_path_no_extension]
+        .iter()
+        .map(|arg| arg.to_string())
+        .collect();
+    match parse_args(args) {
+        Ok(_) => {
+            panic!("Should not get here")
+        }
+        Err(e) => {
+            assert_eq!(
+                e,
+                "Something is wrong with the extension of the given file: `\"test\"`"
+            )
+        }
+    }
+}
