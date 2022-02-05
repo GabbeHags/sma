@@ -1,13 +1,36 @@
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 
-pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), String> {
+#[derive(Default, Debug)]
+pub struct Program {
+    pub path: PathBuf,
+    pub args: Option<Vec<String>>,
+}
+
+impl Program {
+    fn add_arg(&mut self, arg: &str) {
+        if let Some(args) = self.args.as_mut() {
+            args.push(arg.to_string());
+        }
+        else {
+            self.args = Some(vec![arg.to_string()]);
+        }
+    }
+
+    fn add_args(&mut self, args: &[&str]) {
+        for arg in args {
+            self.add_arg(arg)
+        }
+    }
+}
+
+pub fn parse_args(args: Vec<String>) -> Result<(Vec<Program>, Vec<String>), String> {
     const ARG_START: &str = "--start";
     const ARG_EXIT_ON: &str = "--exit";
     let mut arg_start_given: bool = false;
     let mut arg_exit_on_given: bool = false;
 
-    let mut start_these: Vec<String> = Vec::new();
+    let mut start_these: Vec<Program> = Vec::new();
     let mut exit_on_this: Vec<String> = Vec::new();
 
     let mut current_vec: &str = "None";
@@ -27,7 +50,22 @@ pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), Strin
                 }
             } else {
                 match current_vec {
-                    ARG_START => start_these.push(arg.to_string()),
+                    ARG_START => {
+                        let mut program = Program::default();
+                        if arg.contains(".exe ") {
+                            let mut split = arg.split_inclusive(".exe ").collect::<Vec<&str>>();
+                            let args_str = split.pop().unwrap();
+                            let args_split = args_str.split_whitespace().collect::<Vec<&str>>();
+                            program.add_args(&args_split);
+
+                            let str_path = split.pop().unwrap().trim();
+                            program.path = get_path(str_path)?;
+                        }
+                        else {
+                            program.path = get_path(arg)?;
+                        }
+                        start_these.push(program)
+                    }
                     ARG_EXIT_ON => exit_on_this.push(arg.to_string()),
                     _ => return Err(format!("Argument `{arg}` did not start with `--`")),
                 }
@@ -63,14 +101,14 @@ pub fn parse_args(args: Vec<String>) -> Result<(Vec<String>, Vec<String>), Strin
     Ok((start_these, exit_on_this))
 }
 
-pub fn match_exit_with_start(exit: &str, starts: &[String]) -> Result<(), String> {
+fn match_exit_with_start(exit: &str, starts: &[Program]) -> Result<(), String> {
     let mut is_match = false;
     for start in starts {
-        let path = Path::new(start);
+        let path = start.path.as_path();
         let f_name = match path.file_name() {
-            None => return Err(format!("`{start}` does not have a correct file name.")),
+            None => return Err(format!("`{start:?}` does not have a correct file name.")),
             Some(f) => match f.to_str() {
-                None => return Err(format!("`{start}` contains invalid unicode character.")),
+                None => return Err(format!("`{start:?}` contains invalid unicode character.")),
                 Some(s) => s,
             },
         };
@@ -92,47 +130,43 @@ pub fn match_exit_with_start(exit: &str, starts: &[String]) -> Result<(), String
     Ok(())
 }
 
-pub fn get_paths(v: &Vec<String>) -> Result<Vec<PathBuf>, String> {
-    let mut paths = Vec::new();
-    for program in v {
-        let path = Path::new(&program);
-        if !path.is_file() {
-            return Err(format!(
-                "The given path does not point to a file: `{}`",
-                path.display()
-            ));
-        }
-        match path.extension() {
-            None => {
-                return Err(format!(
-                    "Something is wrong with the extension of the given file: `{:?}`",
-                    path.file_name().unwrap()
-                ))
-            }
-            Some(extension) => {
-                if extension != "exe" {
-                    return Err(format!(
-                        "The given file is not a .exe: `{:?}`",
-                        path.file_name().unwrap()
-                    ));
-                }
-            }
-        }
-        paths.push(path.to_path_buf())
+fn get_path(s: &str) -> Result<PathBuf, String> {
+    let path = Path::new(&s);
+    if !path.is_file() {
+        return Err(format!(
+            "The given path does not point to a file: `{}`",
+            path.display()
+        ));
     }
-    Ok(paths)
+    match path.extension() {
+        None => {
+            return Err(format!(
+                "Something is wrong with the extension of the given file: `{:?}`",
+                path.file_name().unwrap()
+            ))
+        }
+        Some(extension) => {
+            if extension != "exe" {
+                return Err(format!(
+                    "The given file is not a .exe: `{:?}`",
+                    path.file_name().unwrap()
+                ));
+            }
+        }
+    }
+    Ok(path.to_path_buf())
 }
 
-pub fn start_program(path: &Path, args: Option<&[String]>) -> Result<Child, String> {
-    let mut cmd = Command::new(path);
-    if let Some(args) = args {
+pub fn start_program(program: &Program) -> Result<Child, String> {
+    let mut cmd = Command::new(program.path.as_path());
+    if let Some(args) = program.args.as_ref() {
         cmd.args(args);
     }
     match cmd.spawn() {
         Ok(child) => Ok(child),
         Err(e) => Err(format!(
             "Failed to start {:?}, given error was: {e}",
-            path.file_name().unwrap()
+            program.path.file_name().unwrap()
         )),
     }
 }
