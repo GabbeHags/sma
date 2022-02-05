@@ -31,13 +31,12 @@ fn program_test() {
         .iter()
         .map(|arg| arg.to_string())
         .collect();
-    let (start, _exit) = match parse_args(args) {
+    let _start = match parse_args(args) {
         Ok(r) => r,
         Err(e) => {
             panic!("{e}")
         }
     };
-    println!("{start:?}");
 }
 
 #[test]
@@ -54,14 +53,13 @@ fn parse_args_valid_input() {
     .iter()
     .map(|arg| arg.to_string())
     .collect();
-    let (start, exit) = match parse_args(args) {
+    let start = match parse_args(args) {
         Ok(r) => r,
         Err(e) => {
             panic!("{e}")
         }
     };
     assert_eq!(start.len(), 1);
-    assert_eq!(exit.len(), 1);
 }
 #[test]
 fn parse_args_check_misspelled_flag_start() {
@@ -89,7 +87,7 @@ fn parse_args_with_args() {
         .map(|arg| arg.to_string())
         .collect();
     match parse_args(args) {
-        Ok((ps, _)) => {
+        Ok(ps) => {
             let p = &ps[0];
             let arg = p.args.as_ref().unwrap().get(0).unwrap().as_str();
             assert_eq!(p.path, Path::new(setup.test_program_path));
@@ -109,7 +107,7 @@ fn parse_args_with_args_2() {
         .map(|arg| arg.to_string())
         .collect();
     match parse_args(args) {
-        Ok((ps, _)) => {
+        Ok(ps) => {
             let p = &ps[0];
             let arg_1 = p.args.as_ref().unwrap().get(0).unwrap().as_str();
             let arg_2 = p.args.as_ref().unwrap().get(1).unwrap().as_str();
