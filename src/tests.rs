@@ -92,7 +92,7 @@ fn parse_args_with_args() {
         Ok((ps, _)) => {
             let p = &ps[0];
             let arg = p.args.as_ref().unwrap().get(0).unwrap().as_str();
-            assert_eq!(p.path.as_path(), Path::new(setup.test_program_path));
+            assert_eq!(p.path, Path::new(setup.test_program_path));
             assert_eq!(arg, "2");
         }
         Err(_) => {
@@ -113,7 +113,7 @@ fn parse_args_with_args_2() {
             let p = &ps[0];
             let arg_1 = p.args.as_ref().unwrap().get(0).unwrap().as_str();
             let arg_2 = p.args.as_ref().unwrap().get(1).unwrap().as_str();
-            assert_eq!(p.path.as_path(), Path::new(setup.test_program_path));
+            assert_eq!(p.path, Path::new(setup.test_program_path));
             assert_eq!(arg_1, "2");
             assert_eq!(arg_2, "3");
         }
