@@ -28,3 +28,6 @@ The line above will start 2 applications `test.exe` and `test2.exe` where they w
 
 * cargo 1.58.0
 * rustc 1.58.1
+
+### License
+This project is released under the [MIT License](LICENSE)
