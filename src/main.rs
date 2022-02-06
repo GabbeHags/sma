@@ -7,7 +7,21 @@ use crate::my_lib::{parse_args, Program};
 use std::env;
 
 fn main() -> Result<(), String> {
-    let mut start_programs = parse_args(env::args().collect())?;
+    let args: Vec<String> = env::args().collect();
+
+    // if the help arg was given.
+    if args.contains(&"--h".to_string()) {
+
+        println!(
+            concat!(
+            "Help:\n",
+            "--start, Starts the given applications.\n",
+            "--exit,  Exits all the started applications if the argument given to --exit is exited.\n"
+            )
+        );
+        return Ok(())
+    }
+    let mut start_programs = parse_args(args)?;
 
     let mut index = None;
 
