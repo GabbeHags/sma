@@ -1,3 +1,5 @@
+[![Rust](https://github.com/GabbeHags/sma/actions/workflows/rust.yml/badge.svg)](https://github.com/GabbeHags/sma/actions/workflows/rust.yml)
+
 # Start Multiple Applications (SMA)
 
 ### Info
