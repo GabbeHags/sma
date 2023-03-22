@@ -1,5 +1,3 @@
-[![Rust](https://github.com/GabbeHags/sma/actions/workflows/rust.yml/badge.svg)](https://github.com/GabbeHags/sma/actions/workflows/rust.yml)
-
 # Start Multiple Applications (SMA)
 
 ### Info
@@ -9,9 +7,17 @@ This project is only tested on Windows.
 Add `--json` to the arguments, this should make it possible to use the keys from a json file in the `--start` which should make it possible to get shorter application names, and you don't need to specify the args to the application.
 
 ### How to use
-`--start`, Starts the given applications.
+#### USAGE:
+    sma.exe [OPTIONS]
 
-`--exit`, Exits all the started applications if the argument given to --exit is exited.
+#### OPTIONS:
+        --exit <exit>         Exits all the started applications if the application name given to
+                              `--exit` is exited.
+    -h, --help                Print help information
+        --json <json>         Uses a json file for the `--start` and `--exit` instead of the command
+                              line arguments.
+        --start <start>...    Starts the given applications.
+
 
 ### How to build
 `$ cargo build`
@@ -26,8 +32,8 @@ The line above will start 2 applications `test.exe` and `test2.exe` where they w
 
 ### Versions
 
-* cargo 1.58.0
-* rustc 1.58.1
+* cargo 1.68.0
+* rustc 1.68.0
 
 ### License
 This project is released under the [MIT License](LICENSE)

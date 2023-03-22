@@ -1,4 +1,4 @@
-
+use std::process;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -6,14 +6,15 @@ fn main() {
     if args.len() != 1 {
         sleep_time = if let Ok(t) = args[1].parse() {
             t
-        }
-        else {
+        } else {
             sleep_time
         }
     }
-
-    println!("Sleeping for {sleep_time} sec");
-    std::thread::sleep(std::time::Duration::new(sleep_time, 0));
-    println!("Sleeping for {sleep_time} sec");
-
+    let id = process::id();
+    println!("[id: {id}] Sleeping for {sleep_time} sec");
+    for t in 1..=sleep_time {
+        println!("[id: {id}] Sleept for {t} sec");
+        std::thread::sleep(std::time::Duration::new(1, 0));
+    }
+    println!("[id: {id}] Woken up after {sleep_time} sec");
 }
