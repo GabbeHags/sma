@@ -18,9 +18,11 @@ impl VerifiedState for UnVerified {}
 const CONFIG_VERSION: u32 = 1;
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Config<State: VerifiedState> {
     pub version: u32,
     pub cwd: Option<PathBuf>,
+    pub cascade_kill: bool,
     pub start: Vec<String>,
     pub exit_on: Option<u8>,
     #[serde(skip)]
@@ -32,6 +34,7 @@ impl Default for Config<UnVerified> {
         Self {
             version: CONFIG_VERSION,
             cwd: Some(PathBuf::default().clean()),
+            cascade_kill: false,
             start: Default::default(),
             exit_on: Default::default(),
             _marker: Default::default(),
@@ -110,6 +113,7 @@ impl Config<UnVerified> {
         Config {
             version: CONFIG_VERSION,
             cwd: None,
+            cascade_kill: false,
             start,
             exit_on,
             _marker: Default::default(),
@@ -124,6 +128,7 @@ impl Config<UnVerified> {
         Ok(Config {
             version: self.version,
             cwd: self.cwd,
+            cascade_kill: self.cascade_kill,
             start: self.start,
             exit_on: self.exit_on,
             _marker: PhantomData::default(),

@@ -8,6 +8,9 @@ use std::{
 use anyhow::{anyhow, bail, Context, Ok};
 use clap::Parser;
 use my_lib::config::Config;
+use sysinfo::{
+    Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt,
+};
 
 fn main() -> anyhow::Result<()> {
     let cli = crate::my_lib::cli::Cli::parse();
@@ -45,7 +48,71 @@ fn main() -> anyhow::Result<()> {
 
     if let Some(exit_on_index) = &config.exit_on {
         wait_on(&mut children, *exit_on_index)?;
-        kill_remaining_children(&mut children)?;
+        if config.cascade_kill {
+            kill_remaining_children_cascade(&mut children)?;
+        } else {
+            kill_remaining_children(&mut children)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()> {
+    let mut sys = System::new_with_specifics(
+        RefreshKind::new().with_processes(ProcessRefreshKind::everything()),
+    );
+
+    sys.refresh_processes();
+    let me = Pid::from_u32(std::process::id());
+
+    let mut cascaded_pids = vec![vec![]];
+    let mut updated = false;
+    let mut layer = 0;
+    let processes: Vec<(&Pid, &Process)> = sys
+        .processes()
+        .iter()
+        .filter(|(_, proc)| sys.process(me).unwrap().start_time() <= proc.start_time())
+        .collect();
+
+    for (pid, proc) in &processes {
+        for child in children.iter() {
+            if let Some(parent) = proc.parent().map(|parent| parent.as_u32()) {
+                if parent == child.id() && me.as_u32() != parent {
+                    cascaded_pids[layer].push(pid.as_u32());
+                    updated = true;
+                }
+            }
+        }
+    }
+    while updated {
+        updated = false;
+        layer += 1;
+        let mut new_pids_found = vec![];
+
+        for cascade_pid in &cascaded_pids[layer - 1] {
+            for (pid, proc) in &processes {
+                if let Some(parent) = proc.parent().map(|parent| parent.as_u32()) {
+                    if parent == *cascade_pid {
+                        new_pids_found.push(pid.as_u32());
+                        updated = true;
+                    }
+                }
+            }
+        }
+        cascaded_pids.push(new_pids_found);
+    }
+
+    kill_remaining_children(children)?;
+
+    sys.refresh_processes();
+    for proc in cascaded_pids
+        .iter()
+        .flatten()
+        .filter_map(|pid| sys.process(Pid::from_u32(*pid)))
+    {
+        println!("Killing sub child: {}", proc.pid());
+        proc.kill();
     }
 
     Ok(())
@@ -60,12 +127,17 @@ fn spawn_process(cmd_vec: &[String]) -> anyhow::Result<Child> {
         bail!("A program in `start` is empty.")
     }
 
-    const DETACHED_PROCESS: u32 = 0x00000008;
-    const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
-    cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
-        .args(&cmd_vec[1..]);
+    if cfg!(debug_assertions) {
+        cmd.args(&cmd_vec[1..]);
+    } else {
+        const DETACHED_PROCESS: u32 = 0x00000008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
+            .args(&cmd_vec[1..]);
+    }
 
     let child = cmd.spawn()?;
+    println!("Spawning child: {}", child.id());
     Ok(child)
 }
 
@@ -79,6 +151,7 @@ fn wait_on<T: Into<usize>>(children: &mut [Child], index: T) -> anyhow::Result<(
 fn kill_remaining_children(children: &mut [Child]) -> anyhow::Result<()> {
     for child in children.iter_mut() {
         if child.try_wait()?.is_none() {
+            println!("Killing child: {}", child.id());
             if let Err(e) = child.kill() {
                 bail!(anyhow!("{e}")
                     .context(anyhow!("Could not kill child with pid `{}`", child.id())))

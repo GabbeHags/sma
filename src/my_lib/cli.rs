@@ -28,6 +28,7 @@ pub enum Commands {
         exit_on: Option<u8>,
 
         // TODO: Add cwd.
+        // TODO: Add cascade_kill.
     },
     /// Specify the config file for SMA.
     Config {
