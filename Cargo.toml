@@ -2,6 +2,11 @@
 name = "sma"
 version = "0.1.0"
 edition = "2021"
+authors = ["Gabriel"]
+rust-version = "1.68.1"
+readme = "README.md"
+repository = "https://github.com/GabbeHags/sma"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
