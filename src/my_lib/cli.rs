@@ -26,10 +26,10 @@ pub enum Commands {
         /// started applications on if the application at that index stops running.
         #[arg(short, long)]
         exit_on: Option<u8>,
-
         // TODO: Add cwd.
         // TODO: Add cascade_kill.
     },
+
     /// Specify the config file for SMA.
     Config {
         /// The file path to the config file.
@@ -66,7 +66,7 @@ fn cli_config_file_path_validator(file_path: &str) -> anyhow::Result<PathBuf> {
 
 fn cli_config_create_config_validator(file_path: &str) -> anyhow::Result<PathBuf> {
     let file_path = std::env::current_dir()?.join(file_path).clean();
-    
+
     // Extension checks
     check_extension(file_path.as_path())?;
     Ok(file_path)
