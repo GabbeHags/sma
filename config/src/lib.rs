@@ -4,10 +4,7 @@ use anyhow::{anyhow, bail};
 use path_clean::PathClean;
 use serde::{Deserialize, Serialize};
 
-use crate::my_lib::{
-    cli::{Cli, Commands},
-    errors::{ConfigFileError, CreateConfigError},
-};
+use cli::{Cli, Commands};
 
 pub trait VerifiedState {}
 pub struct Verified;
@@ -47,24 +44,31 @@ impl Config<UnVerified> {
         let config = match cli.command {
             Commands::Start { start, exit_on } => Config::new(start, exit_on),
             Commands::Config { file_path } => {
-                // Does path exist check
                 match file_path.try_exists() {
                     Ok(true) => (),
-                    Ok(false) => bail!(ConfigFileError::ConfigNotExist(file_path)),
+                    Ok(false) => bail!("Config file does not exist at `{}`.", file_path.display()),
                     Err(e) => {
-                        bail!(anyhow!(e).context(anyhow!(ConfigFileError::ConfigFinding(file_path))))
+                        bail!(anyhow!(e).context(anyhow!(
+                            "Got an error while trying to see if `{}` exists.",
+                            file_path.display()
+                        )))
                     }
                 }
 
                 if !file_path.is_file() {
-                    bail!(ConfigFileError::ConfigIsNotFile(file_path))
+                    bail!(
+                        "The given config file `{}` is not a json file.",
+                        file_path.display()
+                    )
                 }
 
                 let json = fs::read(&file_path)?;
                 let mut config: Config<UnVerified> =
                     serde_json::from_slice(&json).or_else(|e| {
-                        bail!(anyhow!(e)
-                            .context(anyhow!(ConfigFileError::ConfigParsing(file_path.clone()))))
+                        bail!(anyhow!(e).context(anyhow!(
+                            "Something went wrong when reading `{}`.",
+                            file_path.display()
+                        )))
                     })?;
 
                 if let Some(cwd) = &config.cwd {
@@ -85,20 +89,22 @@ impl Config<UnVerified> {
                     file_options.create(true).truncate(true)
                 } else {
                     match file_path.try_exists() {
-                        Ok(true) => bail!(CreateConfigError::ConfigFileAlreadyExist(file_path)),
+                        Ok(true) => {
+                            bail!("The config file `{}` already exist.", file_path.display())
+                        }
                         Ok(false) => file_options.create_new(true),
                         Err(e) => {
-                            bail!(anyhow!(e)
-                                .context(anyhow!(ConfigFileError::ConfigFinding(file_path))))
+                            bail!(anyhow!(e).context(anyhow!(
+                                "Got an error while trying to see if `{}` exists.",
+                                file_path.display()
+                            )))
                         }
                     }
                 }
                 .write(true);
 
                 let mut file = file_options.open(&file_path).or_else(|e| {
-                    bail!(
-                        anyhow!(e).context(anyhow!(ConfigFileError::ConfigCouldNotOpen(file_path)))
-                    )
+                    bail!(anyhow!(e).context(anyhow!("Could not open `{}`.", file_path.display())))
                 })?;
 
                 file.write_all(&serde_json::to_vec_pretty(&Config::default())?)?;
@@ -138,7 +144,10 @@ impl Config<UnVerified> {
     fn validate_cwd(&self) -> anyhow::Result<()> {
         if let Some(cwd) = &self.cwd {
             if !cwd.is_dir() {
-                bail!(ConfigFileError::ConfigCwdIsNotADir(cwd.clone()))
+                bail!(
+                    "The given current working directory (cwd) `{}` is not a directory",
+                    cwd.display()
+                )
             }
         }
         Ok(())
@@ -146,7 +155,7 @@ impl Config<UnVerified> {
 
     fn validate_start(&self) -> anyhow::Result<()> {
         if self.start.is_empty() {
-            bail!(ConfigFileError::ConfigStartIsEmpty)
+            bail!("No arguments where given to `start`.")
         }
         Ok(())
     }

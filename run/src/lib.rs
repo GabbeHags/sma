@@ -1,7 +1,5 @@
-use crate::my_lib::{
-    cli::Cli,
-    config::{Config, Verified},
-};
+use cli::Cli;
+use config::{Config, Verified};
 
 use std::{
     os::windows::process::CommandExt,

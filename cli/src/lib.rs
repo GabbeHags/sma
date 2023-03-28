@@ -4,7 +4,6 @@ use anyhow::bail;
 use clap::{Parser, Subcommand};
 use path_clean::PathClean;
 
-use crate::my_lib::errors::ConfigFileError;
 
 const CONFIG_FILE_NAME: &str = "config.json";
 
@@ -78,15 +77,13 @@ fn check_extension(file_path: &Path) -> anyhow::Result<()> {
         Some(ext) => {
             let ext = match ext.to_str() {
                 Some(ext) => ext,
-                None => bail!(ConfigFileError::ConfigNoneUtf8Extension),
+                None => bail!("Config file does not have the correct extension. Expected json, but found a extension that contains none utf-8 symbols."),
             };
             if ext != "json" {
-                bail!(ConfigFileError::ConfigWrongExtension {
-                    found: ext.to_string(),
-                });
+                bail!("Config file does not have the correct extension. Expected json, but found `{}`.", ext.to_string());
             }
         }
-        None => bail!(ConfigFileError::ConfigNoExtensionFound),
+        None => bail!("Config file does not have the correct extension. Expected json, but found no extension."),
     }
     Ok(())
 }

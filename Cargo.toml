@@ -1,5 +1,4 @@
-[package]
-name = "sma"
+[workspace.package]
 version = "0.1.0"
 edition = "2021"
 authors = ["Gabriel"]
@@ -8,8 +7,26 @@ readme = "README.md"
 repository = "https://github.com/GabbeHags/sma"
 license = "MIT"
 
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+default-members = [
+    "gui/src-tauri"
+]
+
+[workspace]
+members = [
+    "gui/src-tauri",
+    "cli",
+    "config",
+    "run"
+]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
 
 [profile.prod]
 inherits = "release"
@@ -17,14 +34,17 @@ lto = "fat"
 codegen-units = 1
 strip = true
 
-
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0"
 clap = { version = "4.1", features = ["derive"] }
-eframe = "0.21"
 path-clean = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 shlex = "1.1"
 sysinfo = "0.28"
-thiserror = "1.0"
+tauri = { version = "1.2.4", features = [] }
+tauri-build = { version = "1.2.1", features = [] }
+
+cli = {path = "cli"}
+config = {path = "config"}
+run = {path = "run"}
