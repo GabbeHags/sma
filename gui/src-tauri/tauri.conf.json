@@ -1,12 +1,12 @@
 {
   "build": {
-    "beforeBuildCommand": "npm run build",
-    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run check && npm run build",
+    "beforeDevCommand": "npm run check && npm run dev",
     "devPath": "http://localhost:5173",
     "distDir": "../build"
   },
   "package": {
-    "productName": "SMA",
+    "productName": "sma",
     "version": "0.1.0"
   },
   "tauri": {
