@@ -1,14 +1,17 @@
 [package]
-name = "run"
+name = "sma"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
-rust-version = { workspace = true }
 readme = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[[bin]]
+name = "sma"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }

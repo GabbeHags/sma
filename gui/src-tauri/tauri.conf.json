@@ -1,12 +1,13 @@
 {
   "build": {
-    "beforeBuildCommand": "npm run check && npm run build",
-    "beforeDevCommand": "npm run check && npm run dev",
+    "beforeBuildCommand": "cargo build --bin sma --profile prod && cp ../target/release/sma.exe ./src-tauri/ && npm run check && npm run build",
+    "beforeDevCommand": "cargo build --bin sma && cp ../target/debug/sma.exe ./src-tauri/ &&  npm run check && npm run dev",
+    "beforeBundleCommand": "",
     "devPath": "http://localhost:5173",
     "distDir": "../build"
   },
   "package": {
-    "productName": "sma",
+    "productName": "sma-gui",
     "version": "0.1.0"
   },
   "tauri": {
@@ -21,9 +22,6 @@
       "active": true,
       "category": "DeveloperTool",
       "copyright": "",
-      "deb": {
-        "depends": []
-      },
       "externalBin": [],
       "icon": [
         "icons/32x32.png",
@@ -34,22 +32,18 @@
       ],
       "identifier": "com.sma",
       "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": [],
+      "resources": ["sma.exe"],
       "shortDescription": "",
-      "targets": "all",
+      "targets": "msi",
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
         "timestampUrl": "",
         "webviewInstallMode": {
           "type": "embedBootstrapper"
+        },
+        "wix": {
+          "license": "../../LICENSE"
         }
       }
     },

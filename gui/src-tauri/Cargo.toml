@@ -1,25 +1,29 @@
 [package]
-name = "gui"
-default-run = "gui"
-version = "0.1.0"
-edition = "2021"
-authors = ["Gabriel"]
-rust-version = "1.68.1"
+name = "sma-gui"
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "sma-gui"
+path = "src/main.rs"
+
 [build-dependencies]
-tauri-build = { version = "1.3.0", features = [] }
+tauri-build = { workspace = true }
 
 [dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-tauri = { version = "1.3.0", features = ["dialog-open", "dialog-save"] }
-anyhow = "1.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tauri = { workspace = true }
+anyhow = { workspace = true }
 
-cli = {path = "../../cli"}
-config = {path = "../../config"}
-run = {path = "../../run"}
+# cli = { workspace = true }
+# config = { workspace = true }
 
 [features]
 # by default Tauri runs in production mode

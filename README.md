@@ -1,4 +1,9 @@
 # Start Multiple Applications (SMA)
 
-### License
+## Compile
+```bash
+
+```
+
+## License
 This project is released under the [MIT License](LICENSE)
