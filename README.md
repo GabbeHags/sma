@@ -7,7 +7,7 @@ $ ./release.sh
 
 ## Run gui
 ```bash
-$ ./
+$ ./run_gui.sh
 ```
 
 ## Run cli
