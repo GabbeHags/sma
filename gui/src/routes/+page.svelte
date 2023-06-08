@@ -1,6 +1,10 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/tauri';
+  // import { invoke } from '@tauri-apps/api/tauri';
   import { open, save } from '@tauri-apps/api/dialog';
+  import StartTable from '$lib/Start-table.svelte';
+  import State from '$lib/State';
+
+  let state = new State();
 
   async function load_config_file() {
     let path = <string | null>await open({
@@ -15,7 +19,7 @@
     if (path === null) {
       return;
     }
-    config_path = path;
+    state.config_path = path;
   }
   async function save_config_file() {
     let path = <string | null>await save({
@@ -29,7 +33,7 @@
     if (path === null) {
       return;
     }
-    config_path = path;
+    state.config_path = path;
   }
 
   function generate_shortcut_with_config() {}
@@ -44,25 +48,6 @@
       { capture: true }
     );
   }
-  let config_path: string = '';
-
-  let starts: string[] = [''];
-
-  async function get_start_with_dialog(index: number) {
-    let path = <string | null>await open({
-      multiple: false,
-      filters: [
-        {
-          name: '',
-          extensions: ['exe', 'shortcut']
-        }
-      ]
-    });
-    if (path === null) {
-      return;
-    }
-    starts[index] = path;
-  }
 
   disable_right_click();
 </script>
@@ -73,42 +58,18 @@
   </header>
 
   <body>
-    <form>
-      <label>
-        <div class="sub-title" id="config-start-title">Start</div>
-        {#each starts as path, index}
-          <label>
-            <div>
-              {index + 1}.
-              <input type="text" bind:value={path} />
-              <button on:click={() => get_start_with_dialog(index)}>Find</button>
-              {#if starts.length > 1}
-                <button
-                  on:click={() => {
-                    starts.splice(index, 1);
-                    starts = starts;
-                  }}>X</button
-                >
-              {/if}
-            </div>
-          </label>
-        {/each}
-        <div>
-          <button
-            on:click={() => {
-              starts.push('');
-              starts = starts;
-            }}>+</button
-          >
-        </div>
-      </label>
-      <label>
-        <div class="sub-title" id="config-options-title">Options</div>
-        <label>
-          Cascade kill: <input type="checkbox">
-        </label>
-      </label>
-    </form>
+    <StartTable {state} style="margin: auto; width: 50%;" />
+    <div id="plus-button">
+      <button
+        on:click={() => {
+          state.starts.push('');
+          state.starts = state.starts;
+        }}>+</button
+      >
+    </div>
+    <div class="sub-title" id="config-options-title">Options</div>
+
+    Cascade kill:<input type="checkbox" />
 
     <div id="load-save-buttons">
       <button id="config-file-load-button" on:click={load_config_file}>Load config</button>
@@ -123,13 +84,12 @@
 </main>
 
 <style>
-
   .sub-title {
     font-size: 20px;
   }
 
-
   #load-save-buttons {
+    padding-top: 50px;
     padding-bottom: 1%;
   }
 
