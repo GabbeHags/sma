@@ -64,11 +64,6 @@ pub enum Commands {
 }
 
 fn cli_config_file_path_validator(file_path: &str) -> anyhow::Result<PathBuf> {
-    let a = std::env::current_exe()
-        .unwrap()
-        .file_stem()
-        .unwrap()
-        .to_os_string();
     let file_path = std::env::current_dir()?.join(file_path).clean();
 
     // Extension checks
