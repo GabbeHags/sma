@@ -22,9 +22,6 @@ serde_json = { workspace = true }
 tauri = { workspace = true }
 anyhow = { workspace = true }
 
-# cli = { workspace = true }
-# config = { workspace = true }
-
 [features]
 # by default Tauri runs in production mode
 # when `tauri dev` runs it is executed with `cargo run --no-default-features` if `devPath` is an URL
