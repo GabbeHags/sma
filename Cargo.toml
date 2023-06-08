@@ -1,7 +1,7 @@
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
-authors = ["Gabriel"]
+authors = ["GabbeHags"]
 readme = "README.md"
 repository = "https://github.com/GabbeHags/sma"
 license = "MIT"

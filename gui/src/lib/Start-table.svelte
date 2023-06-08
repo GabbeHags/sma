@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { open, save } from '@tauri-apps/api/dialog';
+  import { open } from '@tauri-apps/api/dialog';
   import type State from '$lib/State';
 
   export let state: State;

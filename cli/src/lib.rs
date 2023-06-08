@@ -4,11 +4,20 @@ use anyhow::bail;
 use clap::{Parser, Subcommand};
 use path_clean::PathClean;
 
-
 const CONFIG_FILE_NAME: &str = "config.json";
 
 #[derive(Debug, Parser)]
+#[command(name = "sma")]
+#[command(author)]
 #[command(version, propagate_version = true)]
+#[command(help_template = "
+----------------------------------------
+Author: {author}
+Version: {version}\n
+{usage-heading} {usage}\n
+{all-args} {tab}\n
+----------------------------------------
+")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
@@ -55,6 +64,11 @@ pub enum Commands {
 }
 
 fn cli_config_file_path_validator(file_path: &str) -> anyhow::Result<PathBuf> {
+    let a = std::env::current_exe()
+        .unwrap()
+        .file_stem()
+        .unwrap()
+        .to_os_string();
     let file_path = std::env::current_dir()?.join(file_path).clean();
 
     // Extension checks

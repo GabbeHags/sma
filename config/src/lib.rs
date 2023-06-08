@@ -17,10 +17,18 @@ const CONFIG_VERSION: u32 = 1;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config<State: VerifiedState> {
+    // This is the version of this config file.
     pub version: u32,
+    // This is where we the current working directory will be for the 
+    // applications that are started.
     pub cwd: Option<PathBuf>,
+    // This is if we should also kill all the still living child processes of 
+    // the processes we spawned.
     pub cascade_kill: bool,
+    // This is the applications that we are going to spawn.
     pub start: Vec<String>,
+    // This is the index to the start list of applications that we spawned,
+    // that we waiting for to exit and then we kill everything else we spawned.
     pub exit_on: Option<u8>,
     #[serde(skip)]
     _marker: PhantomData<State>,
