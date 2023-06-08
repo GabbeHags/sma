@@ -3,6 +3,7 @@
   import type State from '$lib/State';
 
   export let state: State;
+  export let on_x: () => void = () => {};
   export let style: string = '';
 
   async function get_start_with_dialog(index: number) {
@@ -28,7 +29,7 @@
     {#each state.starts as path, index}
       <tr>
         <td>{index + 1}.</td>
-        <td><input type="text" bind:value={path} /></td>
+        <td><input type="text" placeholder="Path to Application to start" bind:value={path} /></td>
         <td
           ><button
             on:click={() => {
@@ -41,6 +42,7 @@
           on:click={() => {
             state.starts.splice(index, 1);
             state.starts = state.starts;
+            on_x();
           }}>X</button
         >
       </tr>

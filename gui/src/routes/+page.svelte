@@ -20,9 +20,11 @@
       return;
     }
     state.config_path = path;
+    // TODO: load the config from a file
   }
   async function save_config_file() {
     let path = <string | null>await save({
+      defaultPath: state.config_path,
       filters: [
         {
           name: 'sma config',
@@ -34,9 +36,17 @@
       return;
     }
     state.config_path = path;
+    // TODO: write the state to a file.
   }
 
-  function generate_shortcut_with_config() {}
+  function generate_shortcut_with_config() {
+    // TODO: generate a shortcut which spawns sma.exe with this config
+  }
+
+  function update_exit_on_display() {
+    state.exit_on.clamp_display_num(1, state.starts.length);
+    state.exit_on.update_num();
+  }
 
   function disable_right_click() {
     document.addEventListener(
@@ -58,7 +68,20 @@
   </header>
 
   <body>
-    <StartTable {state} style="margin: auto; width: 50%;" />
+    <div class="sub-title">Start</div>
+    {#if state.exit_on.active}
+      <StartTable
+        {state}
+        on_x={() => {
+          state.exit_on.clamp_display_num(1, state.starts.length);
+          state.exit_on.update_num();
+          state = state;
+        }}
+        style="margin: auto; width: 50%;"
+      />
+    {:else}
+      <StartTable {state} style="margin: auto; width: 50%;" />
+    {/if}
     <div id="plus-button">
       <button
         on:click={() => {
@@ -68,8 +91,27 @@
       >
     </div>
     <div class="sub-title" id="config-options-title">Options</div>
-
-    Cascade kill:<input type="checkbox" />
+    <div class="options">
+      <div class="option">
+        Cascade kill:<input type="checkbox" bind:checked={state.cascade_kill} />
+      </div>
+      <div class="option">
+        Exit on: <input type="checkbox" bind:checked={state.exit_on.active} />
+        {#if state.exit_on.active}
+          <input
+            type="number"
+            min="1"
+            max={state.starts.length}
+            on:change={() => {
+              state.exit_on.clamp_display_num(1, state.starts.length);
+              state.exit_on.update_num();
+              state = state;
+            }}
+            bind:value={state.exit_on.display_num}
+          />
+        {/if}
+      </div>
+    </div>
 
     <div id="load-save-buttons">
       <button id="config-file-load-button" on:click={load_config_file}>Load config</button>
@@ -84,7 +126,17 @@
 </main>
 
 <style>
+  /* .options {
+    border: 1px solid;
+  } */
+  .option {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
   .sub-title {
+    padding-top: 20px;
+    padding-bottom: 10px;
     font-size: 20px;
   }
 

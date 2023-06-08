@@ -161,7 +161,6 @@ fn wait_on<T: Into<usize>>(children: &mut [Child], index: T) -> anyhow::Result<(
     if let Some(child) = children.get_mut(index.into()) {
         child.wait()?;
     }
-
     Ok(())
 }
 
