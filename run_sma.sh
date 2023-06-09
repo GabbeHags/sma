@@ -1,2 +1,2 @@
 
-cargo run --bin sma -- $1
+cargo run --bin sma -- "$@"

@@ -19,5 +19,6 @@ clap = { workspace = true }
 sysinfo = { workspace = true }
 shlex = { workspace = true }
 
+# Local dependencies
 cli = { workspace = true }
 config = {workspace = true}

@@ -3,6 +3,10 @@
     windows_subsystem = "windows"
 )]
 
+use std::path::{Path, PathBuf};
+
+use config::Verified;
+
 #[cfg(debug_assertions)]
 use tauri::Manager;
 
@@ -19,10 +23,22 @@ fn gui() -> anyhow::Result<()> {
                 Ok(())
             },
         )
+        .invoke_handler(tauri::generate_handler![load_config, save_config])
         .run(tauri::generate_context!())?;
     Ok(())
 }
 
 fn main() -> anyhow::Result<()> {
     gui()
+}
+
+#[tauri::command]
+fn load_config(config_path: PathBuf) -> Result<config::Config<Verified>, String> {
+    // TODO: fix so that if the start vec is empty we should still send it to the front end
+    config::Config::from_existing_config_file(config_path).map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn save_config(config_path: &Path) -> Result<(), String> {
+    todo!()
 }

@@ -15,4 +15,5 @@ path-clean = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# Local dependencies
 cli = { workspace = true }

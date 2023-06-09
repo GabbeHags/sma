@@ -1,12 +1,16 @@
 <script lang="ts">
-  // import { invoke } from '@tauri-apps/api/tauri';
-  import { open, save } from '@tauri-apps/api/dialog';
+  import { open, save, message } from '@tauri-apps/api/dialog';
   import StartTable from '$lib/Start-table.svelte';
-  import State from '$lib/State';
+  import { Config, State } from '$lib/State';
+  import { rustLoadConfigFile } from '$lib/rust-bindings';
 
   let state = new State();
 
-  async function load_config_file() {
+  function errorMessage(err: string) {
+    message(err, { title: 'Error message', type: 'error' }).catch((err) => console.log(err));
+  }
+
+  async function loadConfigFile() {
     let path = <string | null>await open({
       multiple: false,
       filters: [
@@ -19,12 +23,20 @@
     if (path === null) {
       return;
     }
-    state.config_path = path;
-    // TODO: load the config from a file
+    state.configPath = path;
+    rustLoadConfigFile(path)
+      .then((config) => {
+        console.log(config);
+        state.config = new Config(config);
+      })
+      .catch((err) => {
+        console.log(err);
+        errorMessage(err);
+      });
   }
-  async function save_config_file() {
+  async function saveConfigFile() {
     let path = <string | null>await save({
-      defaultPath: state.config_path,
+      defaultPath: state.configPath,
       filters: [
         {
           name: 'sma config',
@@ -35,20 +47,22 @@
     if (path === null) {
       return;
     }
-    state.config_path = path;
+    state.configPath = path;
     // TODO: write the state to a file.
   }
 
-  function generate_shortcut_with_config() {
+  function generateShortcutWithConfig() {
     // TODO: generate a shortcut which spawns sma.exe with this config
   }
 
-  function update_exit_on_display() {
-    state.exit_on.clamp_display_num(1, state.starts.length);
-    state.exit_on.update_num();
+  function updateExitOnDisplay() {
+    state.config.exitOn.clamp_display_num(1, state.config.start.length);
+    state.config.exitOn.update_num();
+    console.log(state);
+    state = state;
   }
 
-  function disable_right_click() {
+  function disableRightClick() {
     document.addEventListener(
       'contextmenu',
       (e) => {
@@ -59,7 +73,7 @@
     );
   }
 
-  disable_right_click();
+  disableRightClick();
 </script>
 
 <main>
@@ -69,55 +83,47 @@
 
   <body>
     <div class="sub-title">Start</div>
-    {#if state.exit_on.active}
+    {#if state.config.exitOn.active}
       <StartTable
-        {state}
-        on_x={() => {
-          state.exit_on.clamp_display_num(1, state.starts.length);
-          state.exit_on.update_num();
-          state = state;
-        }}
+        config={state.config}
+        on_x={updateExitOnDisplay}
         style="margin: auto; width: 50%;"
       />
     {:else}
-      <StartTable {state} style="margin: auto; width: 50%;" />
+      <StartTable config={state.config} style="margin: auto; width: 50%;" />
     {/if}
     <div id="plus-button">
       <button
         on:click={() => {
-          state.starts.push('');
-          state.starts = state.starts;
+          state.config.start.push('');
+          state.config.start = state.config.start;
         }}>+</button
       >
     </div>
     <div class="sub-title" id="config-options-title">Options</div>
     <div class="options">
       <div class="option">
-        Cascade kill:<input type="checkbox" bind:checked={state.cascade_kill} />
+        Cascade kill:<input type="checkbox" bind:checked={state.config.cascadeKill} />
       </div>
       <div class="option">
-        Exit on: <input type="checkbox" bind:checked={state.exit_on.active} />
-        {#if state.exit_on.active}
+        Exit on: <input type="checkbox" bind:checked={state.config.exitOn.active} />
+        {#if state.config.exitOn.active}
           <input
             type="number"
             min="1"
-            max={state.starts.length}
-            on:change={() => {
-              state.exit_on.clamp_display_num(1, state.starts.length);
-              state.exit_on.update_num();
-              state = state;
-            }}
-            bind:value={state.exit_on.display_num}
+            max={state.config.start.length}
+            on:change={updateExitOnDisplay}
+            bind:value={state.config.exitOn.displayNum}
           />
         {/if}
       </div>
     </div>
 
     <div id="load-save-buttons">
-      <button id="config-file-load-button" on:click={load_config_file}>Load config</button>
-      <button id="config-file-save-button" on:click={save_config_file}>Save config</button>
+      <button id="config-file-load-button" on:click={loadConfigFile}>Load config</button>
+      <button id="config-file-save-button" on:click={saveConfigFile}>Save config</button>
     </div>
-    <button id="generate-shortcut-button" on:click={generate_shortcut_with_config}>
+    <button id="generate-shortcut-button" on:click={generateShortcutWithConfig}>
       Generate shortcut
     </button>
   </body>

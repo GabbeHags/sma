@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "cwd": ".",
+  "cascadeKill": false,
+  "start": [""],
+  "exitOn": null
+}

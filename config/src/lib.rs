@@ -48,7 +48,7 @@ impl Default for Config<UnVerified> {
 }
 
 impl Config<UnVerified> {
-    fn from_existing_config_file(file_path: PathBuf) -> anyhow::Result<Config<Verified>> {
+    pub fn from_existing_config_file(file_path: PathBuf) -> anyhow::Result<Config<Verified>> {
         match file_path.try_exists() {
             Ok(true) => (),
             Ok(false) => bail!("Config file does not exist at `{}`.", file_path.display()),
@@ -84,7 +84,7 @@ impl Config<UnVerified> {
         config.verify()
     }
 
-    fn new_config_to_file(
+    pub fn new_config_to_file(
         file_path: PathBuf,
         force_overide: bool,
     ) -> anyhow::Result<Config<Verified>> {

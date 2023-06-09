@@ -1,35 +1,66 @@
-class State {
-  config_path: string;
-  starts: string[];
-  cascade_kill: boolean;
-  exit_on: ExitOn;
+import type { IRustConfig } from '$lib/rust-bindings';
+
+export class State {
+  configPath: string;
+  config: Config;
 
   constructor() {
-    this.config_path = '';
-    this.starts = [''];
-    this.cascade_kill = false;
-    this.exit_on = new ExitOn();
+    this.configPath = '';
+    this.config = new Config();
+  }
+}
+
+export class Config {
+  version: number;
+  cwd: string;
+  cascadeKill: boolean;
+  start: string[];
+  exitOn: ExitOn;
+
+  constructor(config: IRustConfig = {} as IRustConfig) {
+    const { version = 1, cwd = null, cascadeKill = false, start = [''], exitOn = null } = config;
+
+    let tempCwd: string;
+    if (cwd === null) {
+      tempCwd = '';
+    } else {
+      tempCwd = cwd;
+    }
+    const tempExitOn = new ExitOn();
+    if (exitOn !== null) {
+      tempExitOn.active = true;
+      tempExitOn.num = exitOn;
+      tempExitOn.num = exitOn;
+    }
+    this.version = version;
+    this.cwd = tempCwd;
+    this.cascadeKill = cascadeKill;
+    this.start = start;
+    this.exitOn = tempExitOn;
   }
 }
 
 class ExitOn {
   private _num: number;
   active: boolean;
-  display_num: number;
+  displayNum: number;
 
   constructor() {
     this.active = false;
-    this.display_num = 1;
-    this._num = this.display_num - 1;
+    this.displayNum = 1;
+    this._num = this.displayNum - 1;
+  }
+
+  set num(num: number) {
+    this._num = num;
+    this.displayNum = this._num + 1;
   }
 
   update_num() {
-    this._num = Math.max(0, this.display_num - 1);
+    this._num = Math.max(0, this.displayNum - 1);
   }
 
   clamp_display_num(min: number, max: number) {
-    this.display_num = Math.max(min, Math.min(this.display_num, max));
+    this.displayNum = Math.max(min, Math.min(this.displayNum, max));
   }
 }
-
-export default State;
