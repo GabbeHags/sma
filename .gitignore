@@ -3,6 +3,7 @@
 *.pdb
 
 config.json
+sma_test_config.json
 ignore
 
 .DS_Store
