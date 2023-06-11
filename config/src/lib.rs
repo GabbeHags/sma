@@ -1,10 +1,8 @@
-use std::{fs, io::Write, marker::PhantomData, path::PathBuf, process::exit};
+use std::{fs, io::Write, marker::PhantomData, path::PathBuf};
 
 use anyhow::{anyhow, bail};
 use path_clean::PathClean;
 use serde::{Deserialize, Serialize};
-
-use cli::{Cli, Commands};
 
 pub trait VerifiedState {}
 pub struct Verified;
@@ -19,10 +17,10 @@ const CONFIG_VERSION: u32 = 1;
 pub struct Config<State: VerifiedState> {
     // This is the version of this config file.
     pub version: u32,
-    // This is where we the current working directory will be for the 
+    // This is where we the current working directory will be for the
     // applications that are started.
     pub cwd: Option<PathBuf>,
-    // This is if we should also kill all the still living child processes of 
+    // This is if we should also kill all the still living child processes of
     // the processes we spawned.
     pub cascade_kill: bool,
     // This is the applications that we are going to spawn.
@@ -83,11 +81,11 @@ impl Config<UnVerified> {
 
         config.verify()
     }
-
-    pub fn new_config_to_file(
+    pub fn create_file_from_config(
+        config: Config<Verified>,
         file_path: PathBuf,
         force_overide: bool,
-    ) -> anyhow::Result<Config<Verified>> {
+    ) -> anyhow::Result<()> {
         let mut file_options = fs::OpenOptions::new();
 
         if force_overide {
@@ -95,7 +93,10 @@ impl Config<UnVerified> {
         } else {
             match file_path.try_exists() {
                 Ok(true) => {
-                    bail!("The config file `{}` already exist.", file_path.display())
+                    bail!(
+                        "The config file `{}` already exist.\nUse flag `-f`, `--force-overide` to force a override of the config file.", 
+                        file_path.display()
+                    )
                 }
                 Ok(false) => file_options.create_new(true),
                 Err(e) => {
@@ -111,21 +112,12 @@ impl Config<UnVerified> {
         let mut file = file_options.open(&file_path).or_else(|e| {
             bail!(anyhow!(e).context(anyhow!("Could not open `{}`.", file_path.display())))
         })?;
-
-        file.write_all(&serde_json::to_vec_pretty(&Config::default())?)?;
-
-        exit(0);
+        file.write_all(&serde_json::to_vec_pretty(&config)?)?;
+        Ok(())
     }
 
-    pub fn from_cli(cli: Cli) -> anyhow::Result<Config<Verified>> {
-        match cli.command {
-            Commands::Start { start, exit_on } => Config::new(start, exit_on),
-            Commands::Config { file_path } => Self::from_existing_config_file(file_path),
-            Commands::CreateConfig {
-                file_path,
-                force_overide,
-            } => Self::new_config_to_file(file_path, force_overide),
-        }
+    pub fn new_config_to_file(file_path: PathBuf, force_overide: bool) -> anyhow::Result<()> {
+        Config::create_file_from_config(Config::default().verify()?, file_path, force_overide)
     }
 
     pub fn new(start: Vec<String>, exit_on: Option<u8>) -> anyhow::Result<Config<Verified>> {
@@ -167,9 +159,7 @@ impl Config<UnVerified> {
     }
 
     fn validate_start(&self) -> anyhow::Result<()> {
-        if self.start.is_empty() {
-            bail!("No arguments where given to `start`.")
-        }
+        // TODO: Check if the given command actually exist
         Ok(())
     }
 

@@ -3,9 +3,9 @@
     windows_subsystem = "windows"
 )]
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use config::Verified;
+use config::{Config, UnVerified, Verified};
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
@@ -39,6 +39,9 @@ fn load_config(config_path: PathBuf) -> Result<config::Config<Verified>, String>
 }
 
 #[tauri::command]
-fn save_config(config_path: &Path) -> Result<(), String> {
-    todo!()
+fn save_config(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), String> {
+    let verified_config = config.verify().map_err(|err| err.to_string())?;
+
+    config::Config::create_file_from_config(verified_config, config_path, true)
+        .map_err(|err| err.to_string())
 }

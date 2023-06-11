@@ -2,7 +2,7 @@
   import { open, save, message } from '@tauri-apps/api/dialog';
   import StartTable from '$lib/Start-table.svelte';
   import { Config, State } from '$lib/State';
-  import { rustLoadConfigFile } from '$lib/rust-bindings';
+  import { rustLoadConfigFile, rustSaveConfigFile } from '$lib/rust-bindings';
 
   let state = new State();
 
@@ -12,6 +12,7 @@
 
   async function loadConfigFile() {
     let path = <string | null>await open({
+      defaultPath: state.configPath,
       multiple: false,
       filters: [
         {
@@ -24,10 +25,10 @@
       return;
     }
     state.configPath = path;
-    rustLoadConfigFile(path)
-      .then((config) => {
-        console.log(config);
-        state.config = new Config(config);
+    rustLoadConfigFile(state.configPath)
+      .then((rustConfig) => {
+        console.log(rustConfig);
+        state.config = Config.fromRustConfig(rustConfig);
       })
       .catch((err) => {
         console.log(err);
@@ -48,7 +49,11 @@
       return;
     }
     state.configPath = path;
-    // TODO: write the state to a file.
+
+    rustSaveConfigFile(state.config.toRustConfig(), state.configPath).catch((err) => {
+      console.log(err);
+      errorMessage(err);
+    });
   }
 
   function generateShortcutWithConfig() {
@@ -58,7 +63,6 @@
   function updateExitOnDisplay() {
     state.config.exitOn.clamp_display_num(1, state.config.start.length);
     state.config.exitOn.update_num();
-    console.log(state);
     state = state;
   }
 

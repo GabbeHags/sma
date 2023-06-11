@@ -13,8 +13,16 @@ use sysinfo::{
 };
 
 pub fn run() -> anyhow::Result<()> {
-    let cli = Cli::parse();
-    let config = Config::from_cli(cli).with_context(|| anyhow!("Failed to verify the config."))?;
+    let config = match Cli::parse().command {
+        cli::Commands::Start { start, exit_on } => Config::new(start, exit_on),
+        cli::Commands::Config { file_path } => Config::from_existing_config_file(file_path),
+        cli::Commands::CreateConfig {
+            file_path,
+            force_overide,
+        } => return Config::new_config_to_file(file_path, force_overide),
+    }
+    .with_context(|| anyhow!("Failed to verify the config."))?;
+
     change_cwd(&config)?;
 
     let mut children = spawn_processes(&config)?;

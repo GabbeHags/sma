@@ -7,6 +7,8 @@
   export let style: string = '';
 
   async function getStartWithDialog(index: number) {
+    // TODO: if the selected file is a shortcut,
+    // grab how that shortcut is executed and set that in this start.
     let path = <string | null>await open({
       multiple: false,
       filters: [

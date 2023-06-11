@@ -8,6 +8,14 @@ export interface IRustConfig {
   exitOn: number | null;
 }
 
+export interface IToRustConfig {
+  toRustConfig: () => IRustConfig;
+}
+
 export async function rustLoadConfigFile(configPath: string): Promise<IRustConfig> {
   return await invoke('load_config', { configPath });
+}
+
+export async function rustSaveConfigFile(config: IRustConfig, configPath: string): Promise<void> {
+  return await invoke('save_config', { config, configPath });
 }
