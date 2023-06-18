@@ -19,3 +19,7 @@ export async function rustLoadConfigFile(configPath: string): Promise<IRustConfi
 export async function rustSaveConfigFile(config: IRustConfig, configPath: string): Promise<void> {
   return await invoke('save_config', { config, configPath });
 }
+
+export async function rustCreateShortcut(config: IRustConfig, configPath: string): Promise<void> {
+  return await invoke('create_shortcut', { config, configPath });
+}

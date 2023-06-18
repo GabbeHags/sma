@@ -2,7 +2,7 @@
   import { open, save, message } from '@tauri-apps/api/dialog';
   import StartTable from '$lib/Start-table.svelte';
   import { Config, State } from '$lib/State';
-  import { rustLoadConfigFile, rustSaveConfigFile } from '$lib/rust-bindings';
+  import { rustCreateShortcut, rustLoadConfigFile, rustSaveConfigFile } from '$lib/rust-bindings';
 
   let state = new State();
 
@@ -62,6 +62,10 @@
 
   function generateShortcutWithConfig() {
     // TODO: generate a shortcut which spawns sma.exe with this config
+    rustCreateShortcut(state.config.toRustConfig(), state.configPath).catch((err) => {
+      console.log(err);
+      errorMessage(err);
+    });
   }
 
   function updateExitOnDisplay() {

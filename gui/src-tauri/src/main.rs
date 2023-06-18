@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use config::{Config, UnVerified, Verified};
 
@@ -23,7 +23,11 @@ fn gui() -> anyhow::Result<()> {
                 Ok(())
             },
         )
-        .invoke_handler(tauri::generate_handler![load_config, save_config])
+        .invoke_handler(tauri::generate_handler![
+            load_config,
+            save_config,
+            create_shortcut
+        ])
         .run(tauri::generate_context!())?;
     Ok(())
 }
@@ -43,6 +47,15 @@ fn save_config(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), S
         .map_err(|err| err.to_string())?
         .create_file(config_path, true)
         .map_err(|err| err.to_string())
+}
+
+#[tauri::command]
+fn create_shortcut(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), String> {
+    mslnk::ShellLink::new(r"D:\Programming\Rust\sma\gui\src-tauri\sma.exe")
+        .unwrap()
+        .create_lnk(r"D:\Programming\Rust\sma\sma_test.lnk")
+        .unwrap();
+    Ok(())
 }
 
 fn main() -> anyhow::Result<()> {

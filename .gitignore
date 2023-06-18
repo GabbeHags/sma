@@ -3,9 +3,9 @@
 *.pdb
 
 config.json
-sma_*.json
 ignore
 sma.exe
+sma_*
 
 .DS_Store
 node_modules
