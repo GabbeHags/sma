@@ -56,6 +56,10 @@
     });
   }
 
+  function testConfig() {
+    // TODO: test this config by running it with sma.
+  }
+
   function generateShortcutWithConfig() {
     // TODO: generate a shortcut which spawns sma.exe with this config
   }
@@ -136,9 +140,6 @@
 </main>
 
 <style>
-  /* .options {
-    border: 1px solid;
-  } */
   .option {
     padding-left: 10px;
     padding-right: 10px;

@@ -1,4 +1,9 @@
-use std::{fs, io::Write, marker::PhantomData, path::PathBuf};
+use std::{
+    fs,
+    io::Write,
+    marker::PhantomData,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{anyhow, bail};
 use path_clean::PathClean;
@@ -15,19 +20,27 @@ const CONFIG_VERSION: u32 = 1;
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config<State: VerifiedState> {
+    // TODO: add a option to check if we start sma with a config but it is 
+    // already running, should start the same config again and start all the 
+    // applications, or should we exit with out starting them, or should we 
+    // start them and then send the info to the first running sma, so it 
+    // handles the new pids that spawned.
+
+    // TODO: add a option to start some starts with a console or not.
+
     // This is the version of this config file.
-    pub version: u32,
+    version: u32,
     // This is where we the current working directory will be for the
     // applications that are started.
-    pub cwd: Option<PathBuf>,
+    cwd: Option<PathBuf>,
     // This is if we should also kill all the still living child processes of
     // the processes we spawned.
-    pub cascade_kill: bool,
+    cascade_kill: bool,
     // This is the applications that we are going to spawn.
-    pub start: Vec<String>,
+    start: Vec<String>,
     // This is the index to the start list of applications that we spawned,
     // that we waiting for to exit and then we kill everything else we spawned.
-    pub exit_on: Option<u8>,
+    exit_on: Option<u8>,
     #[serde(skip)]
     _marker: PhantomData<State>,
 }
@@ -45,8 +58,63 @@ impl Default for Config<UnVerified> {
     }
 }
 
+impl<State: VerifiedState> Config<State> {
+    pub fn get_version(&self) -> u32 {
+        self.version
+    }
+
+    pub fn get_cwd(&self) -> Option<&Path> {
+        self.cwd.as_deref()
+    }
+
+    pub fn get_cascade_kill(&self) -> bool {
+        self.cascade_kill
+    }
+
+    pub fn get_start(&self) -> &[String] {
+        self.start.as_slice()
+    }
+
+    pub fn get_exit_on(&self) -> Option<u8> {
+        self.exit_on
+    }
+}
+
+impl Config<Verified> {
+    pub fn create_file(&self, file_path: PathBuf, force_overide: bool) -> anyhow::Result<()> {
+        let mut file_options = fs::OpenOptions::new();
+
+        if force_overide {
+            file_options.create(true).truncate(true)
+        } else {
+            match file_path.try_exists() {
+                Ok(true) => {
+                    bail!(
+                        "The config file `{}` already exist.\nUse flag `-f`, `--force-overide` to force a override of the config file.", 
+                        file_path.display()
+                    )
+                }
+                Ok(false) => file_options.create_new(true),
+                Err(e) => {
+                    bail!(anyhow!(e).context(anyhow!(
+                        "Got an error while trying to see if `{}` exists.",
+                        file_path.display()
+                    )))
+                }
+            }
+        }
+        .write(true);
+
+        let mut file = file_options.open(&file_path).or_else(|e| {
+            bail!(anyhow!(e).context(anyhow!("Could not open `{}`.", file_path.display())))
+        })?;
+        file.write_all(&serde_json::to_vec_pretty(self)?)?;
+        Ok(())
+    }
+}
+
 impl Config<UnVerified> {
-    pub fn from_existing_config_file(file_path: PathBuf) -> anyhow::Result<Config<Verified>> {
+    pub fn from_existing_config_file(file_path: PathBuf) -> anyhow::Result<Config<UnVerified>> {
         match file_path.try_exists() {
             Ok(true) => (),
             Ok(false) => bail!("Config file does not exist at `{}`.", file_path.display()),
@@ -79,45 +147,13 @@ impl Config<UnVerified> {
             }
         }
 
-        config.verify()
-    }
-    pub fn create_file_from_config(
-        config: Config<Verified>,
-        file_path: PathBuf,
-        force_overide: bool,
-    ) -> anyhow::Result<()> {
-        let mut file_options = fs::OpenOptions::new();
-
-        if force_overide {
-            file_options.create(true).truncate(true)
-        } else {
-            match file_path.try_exists() {
-                Ok(true) => {
-                    bail!(
-                        "The config file `{}` already exist.\nUse flag `-f`, `--force-overide` to force a override of the config file.", 
-                        file_path.display()
-                    )
-                }
-                Ok(false) => file_options.create_new(true),
-                Err(e) => {
-                    bail!(anyhow!(e).context(anyhow!(
-                        "Got an error while trying to see if `{}` exists.",
-                        file_path.display()
-                    )))
-                }
-            }
-        }
-        .write(true);
-
-        let mut file = file_options.open(&file_path).or_else(|e| {
-            bail!(anyhow!(e).context(anyhow!("Could not open `{}`.", file_path.display())))
-        })?;
-        file.write_all(&serde_json::to_vec_pretty(&config)?)?;
-        Ok(())
+        Ok(config)
     }
 
     pub fn new_config_to_file(file_path: PathBuf, force_overide: bool) -> anyhow::Result<()> {
-        Config::create_file_from_config(Config::default().verify()?, file_path, force_overide)
+        Config::default()
+            .verify()?
+            .create_file(file_path, force_overide)
     }
 
     pub fn new(start: Vec<String>, exit_on: Option<u8>) -> anyhow::Result<Config<Verified>> {

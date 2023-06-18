@@ -28,20 +28,23 @@ fn gui() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn main() -> anyhow::Result<()> {
-    gui()
-}
-
 #[tauri::command]
 fn load_config(config_path: PathBuf) -> Result<config::Config<Verified>, String> {
-    // TODO: fix so that if the start vec is empty we should still send it to the front end
-    config::Config::from_existing_config_file(config_path).map_err(|err| err.to_string())
+    config::Config::from_existing_config_file(config_path)
+        .map_err(|err| err.to_string())?
+        .verify()
+        .map_err(|err| err.to_string())
 }
 
 #[tauri::command]
 fn save_config(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), String> {
-    let verified_config = config.verify().map_err(|err| err.to_string())?;
-
-    config::Config::create_file_from_config(verified_config, config_path, true)
+    config
+        .verify()
+        .map_err(|err| err.to_string())?
+        .create_file(config_path, true)
         .map_err(|err| err.to_string())
+}
+
+fn main() -> anyhow::Result<()> {
+    gui()
 }

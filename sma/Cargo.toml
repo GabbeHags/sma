@@ -15,9 +15,9 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = { workspace = true }
-clap = { workspace = true }
 sysinfo = { workspace = true }
 shlex = { workspace = true }
+winapi = { workspace = true }
 
 # Local dependencies
 cli = { workspace = true }

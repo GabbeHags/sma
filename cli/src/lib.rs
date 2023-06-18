@@ -18,9 +18,13 @@ Version: {version}\n
 {all-args} {tab}\n
 ----------------------------------------
 ")]
-pub struct Cli {
+struct Cli {
     #[command(subcommand)]
     pub command: Commands,
+}
+
+pub fn get_args() -> Commands {
+    Cli::parse().command
 }
 
 #[derive(Debug, Subcommand)]

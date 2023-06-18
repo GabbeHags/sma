@@ -1,4 +1,3 @@
-use cli::Cli;
 use config::{Config, Verified};
 
 use std::{
@@ -7,15 +6,19 @@ use std::{
 };
 
 use anyhow::{anyhow, bail, Context, Ok};
-use clap::Parser;
 use sysinfo::{
     Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt,
 };
 
+pub const DETACHED_PROCESS: u32 = 0x00000008;
+pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
+
 pub fn run() -> anyhow::Result<()> {
-    let config = match Cli::parse().command {
+    let config = match cli::get_args() {
         cli::Commands::Start { start, exit_on } => Config::new(start, exit_on),
-        cli::Commands::Config { file_path } => Config::from_existing_config_file(file_path),
+        cli::Commands::Config { file_path } => {
+            Config::from_existing_config_file(file_path)?.verify()
+        }
         cli::Commands::CreateConfig {
             file_path,
             force_overide,
@@ -33,7 +36,7 @@ pub fn run() -> anyhow::Result<()> {
 }
 
 fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
-    if let Some(cwd) = &config.cwd {
+    if let Some(cwd) = config.get_cwd() {
         std::env::set_current_dir(cwd).with_context(|| {
             anyhow!("Failed to change working directory to `{}`", cwd.display())
         })?;
@@ -42,9 +45,9 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
 }
 
 fn wait_and_kill(config: &Config<Verified>, children: &mut [Child]) -> anyhow::Result<()> {
-    if let Some(exit_on_index) = &config.exit_on {
-        wait_on(children, *exit_on_index)?;
-        if config.cascade_kill {
+    if let Some(exit_on_index) = config.get_exit_on() {
+        wait_on(children, exit_on_index)?;
+        if config.get_cascade_kill() {
             kill_remaining_children_cascade(children)?;
         } else {
             kill_remaining_children(children)?;
@@ -59,7 +62,7 @@ fn spawn_processes(config: &Config<Verified>) -> anyhow::Result<Vec<Child>> {
 
     let mut cmd_vecs = Vec::new();
 
-    for (index, cmd_str) in config.start.iter().enumerate() {
+    for (index, cmd_str) in config.get_start().iter().enumerate() {
         if cmd_str.is_empty() {
             bail!("The program at index `{index}` in `start` is empty.")
         }
@@ -154,8 +157,6 @@ fn spawn_process(cmd_vec: &[String]) -> anyhow::Result<Child> {
     if cfg!(debug_assertions) {
         cmd.args(&cmd_vec[1..]);
     } else {
-        const DETACHED_PROCESS: u32 = 0x00000008;
-        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
         cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
             .args(&cmd_vec[1..]);
     }
