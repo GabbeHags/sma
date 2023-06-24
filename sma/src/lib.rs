@@ -157,8 +157,11 @@ fn spawn_process(cmd_vec: &[String]) -> anyhow::Result<Child> {
     if cfg!(debug_assertions) {
         cmd.args(&cmd_vec[1..]);
     } else {
-        cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
-            .args(&cmd_vec[1..]);
+        cmd.creation_flags(
+            // TODO: swap this out to the windows crate instead of winapi
+            winapi::um::winbase::DETACHED_PROCESS | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
+        )
+        .args(&cmd_vec[1..]);
     }
 
     let child = cmd.spawn()?;

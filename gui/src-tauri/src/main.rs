@@ -3,9 +3,9 @@
     windows_subsystem = "windows"
 )]
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use config::{Config, UnVerified, Verified};
+use config::{Config, UnVerified};
 
 #[cfg(debug_assertions)]
 use tauri::Manager;
@@ -33,11 +33,8 @@ fn gui() -> anyhow::Result<()> {
 }
 
 #[tauri::command]
-fn load_config(config_path: PathBuf) -> Result<config::Config<Verified>, String> {
-    config::Config::from_existing_config_file(config_path)
-        .map_err(|err| err.to_string())?
-        .verify()
-        .map_err(|err| err.to_string())
+fn load_config(config_path: PathBuf) -> Result<config::Config<UnVerified>, String> {
+    config::Config::from_existing_config_file(config_path).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -50,11 +47,32 @@ fn save_config(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), S
 }
 
 #[tauri::command]
-fn create_shortcut(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), String> {
-    mslnk::ShellLink::new(r"D:\Programming\Rust\sma\gui\src-tauri\sma.exe")
+fn create_shortcut(
+    config: Config<UnVerified>,
+    config_path: PathBuf,
+    shortcut_path: PathBuf,
+) -> Result<(), String> {
+    // TODO: fix what happens if the config_path is empty. This should probably save the current config in ./config/sma_config_1.json -> ./config/sma_config_2.json, -> ./config/sma_config_n.json
+
+    // TODO: if shortcut_path is empty we should not do anything and just return error.
+
+    let config = config.verify().map_err(|e| e.to_string())?;
+    let sma_path = std::env::current_exe()
+        .map_err(|e| e.to_string())?
+        .parent()
         .unwrap()
-        .create_lnk(r"D:\Programming\Rust\sma\sma_test.lnk")
-        .unwrap();
+        .to_path_buf()
+        .join("sma.exe");
+    if sma_path.try_exists().is_ok_and(|x| x) {
+        let mut link = mslnk::ShellLink::new(sma_path).unwrap();
+        link.set_arguments(Some(format!("config {}", config_path.display())));
+        link.create_lnk(shortcut_path).unwrap();
+    } else {
+        return Err(format!(
+            "There was an error while trying to find `sma.exe` at `{}`",
+            sma_path.display()
+        ));
+    }
     Ok(())
 }
 

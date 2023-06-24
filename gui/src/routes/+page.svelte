@@ -35,19 +35,29 @@
         errorMessage(err);
       });
   }
-  async function saveConfigFile() {
-    let path = <string | null>await save({
-      defaultPath: state.configPath,
+
+  async function saveWindow(
+    name: string,
+    extensions: string[],
+    defaultPath?: string
+  ): Promise<string | null> {
+    return save({
+      defaultPath: defaultPath,
       filters: [
         {
-          name: 'sma config',
-          extensions: ['json']
+          name: name,
+          extensions: extensions
         }
       ]
     });
+  }
+
+  async function saveConfigFile() {
+    let path = await saveWindow('sma config', ['json'], state.configPath);
     if (path === null) {
       return;
     }
+
     state.configPath = path;
 
     rustSaveConfigFile(state.config.toRustConfig(), state.configPath).catch((err) => {
@@ -60,9 +70,12 @@
     // TODO: test this config by running it with sma.
   }
 
-  function generateShortcutWithConfig() {
-    // TODO: generate a shortcut which spawns sma.exe with this config
-    rustCreateShortcut(state.config.toRustConfig(), state.configPath).catch((err) => {
+  async function generateShortcutWithConfig() {
+    let path = await saveWindow('shortcut', ['lnk']);
+    if (path === null) {
+      return;
+    }
+    rustCreateShortcut(state.config.toRustConfig(), state.configPath, path).catch((err) => {
       console.log(err);
       errorMessage(err);
     });

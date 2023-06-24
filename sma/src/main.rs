@@ -1,11 +1,12 @@
 use std::{os::windows::process::CommandExt, process::Command};
+use sysinfo::{Pid, PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
+use winapi::um::{
+    wincon::GetConsoleWindow,
+    winuser::{ShowWindow, SW_HIDE},
+};
 
 fn hide_console_window() {
-    use winapi::um::{
-        wincon::GetConsoleWindow,
-        winuser::{ShowWindow, SW_HIDE},
-    };
-
+    // TODO: swap this out to the windows crate instead of winapi
     let window = unsafe { GetConsoleWindow() };
     // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-showwindow
     if !window.is_null() {
@@ -16,7 +17,6 @@ fn hide_console_window() {
 }
 
 fn is_started_by_double_click() -> bool {
-    use sysinfo::{Pid, PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
     let me = Pid::from_u32(std::process::id());
     let sys =
         System::new_with_specifics(RefreshKind::new().with_processes(ProcessRefreshKind::new()));
@@ -30,7 +30,7 @@ fn is_started_by_double_click() -> bool {
 }
 
 fn main() -> anyhow::Result<()> {
-    if is_started_by_double_click() {
+    if !is_started_by_double_click() {
         hide_console_window();
         let gui_path = std::env::current_exe()?
             .parent()
@@ -38,9 +38,13 @@ fn main() -> anyhow::Result<()> {
             .to_path_buf()
             .join("sma-gui.exe");
 
-        if gui_path.exists() && std::env::args().len() == 1 {
+        if gui_path.try_exists().is_ok_and(|x| x) && std::env::args().len() == 1 {
             _ = Command::new(&gui_path)
-                .creation_flags(sma::DETACHED_PROCESS | sma::CREATE_NEW_PROCESS_GROUP)
+                .creation_flags(
+                    // TODO: swap this out to the windows crate instead of winapi
+                    winapi::um::winbase::DETACHED_PROCESS
+                        | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
+                )
                 .spawn()?;
         } else {
             sma::run()?;
