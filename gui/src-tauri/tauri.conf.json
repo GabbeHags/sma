@@ -16,7 +16,11 @@
       "dialog": {
         "open": true,
         "save": true,
-        "message": true
+        "message": true,
+        "ask": true
+      },
+      "window": {
+        "setTitle": true
       }
     },
     "bundle": {

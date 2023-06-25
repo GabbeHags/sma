@@ -7,7 +7,6 @@ use std::path::PathBuf;
 
 use config::{Config, UnVerified};
 
-#[cfg(debug_assertions)]
 use tauri::Manager;
 
 fn gui() -> anyhow::Result<()> {
@@ -29,6 +28,7 @@ fn gui() -> anyhow::Result<()> {
             create_shortcut
         ])
         .run(tauri::generate_context!())?;
+    
     Ok(())
 }
 
@@ -48,7 +48,7 @@ fn save_config(config: Config<UnVerified>, config_path: PathBuf) -> Result<(), S
 
 #[tauri::command]
 fn create_shortcut(
-    config: Config<UnVerified>,
+    // config: Config<UnVerified>,
     config_path: PathBuf,
     shortcut_path: PathBuf,
 ) -> Result<(), String> {
@@ -56,13 +56,22 @@ fn create_shortcut(
 
     // TODO: if shortcut_path is empty we should not do anything and just return error.
 
-    let config = config.verify().map_err(|e| e.to_string())?;
+    if !config_path.is_file() {
+        return Err(format!(
+            "The given config file path `{}` does not exist",
+            config_path.display()
+        ));
+    }
+
+    // let config = config.verify().map_err(|e| e.to_string())?;
+
     let sma_path = std::env::current_exe()
         .map_err(|e| e.to_string())?
         .parent()
         .unwrap()
         .to_path_buf()
         .join("sma.exe");
+
     if sma_path.try_exists().is_ok_and(|x| x) {
         let mut link = mslnk::ShellLink::new(sma_path).unwrap();
         link.set_arguments(Some(format!("config {}", config_path.display())));
@@ -74,6 +83,11 @@ fn create_shortcut(
         ));
     }
     Ok(())
+}
+
+#[tauri::command]
+fn set_window_title(title: String) -> Result<(), String> {
+    todo!()
 }
 
 fn main() -> anyhow::Result<()> {

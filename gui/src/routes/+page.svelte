@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { open, save, message } from '@tauri-apps/api/dialog';
+  import { open, save, message, ask } from '@tauri-apps/api/dialog';
+  import { appWindow } from '@tauri-apps/api/window';
   import StartTable from '$lib/Start-table.svelte';
   import { Config, State } from '$lib/State';
   import { rustCreateShortcut, rustLoadConfigFile, rustSaveConfigFile } from '$lib/rust-bindings';
@@ -8,6 +9,14 @@
 
   function errorMessage(err: string) {
     message(err, { title: 'Error message', type: 'error' }).catch((err) => console.log(err));
+  }
+
+  function infoMessage(info: string) {
+    message(info, { title: 'Info message', type: 'info' }).catch((err) => console.log(err));
+  }
+
+  async function setTitle(title:string) {
+    await appWindow.setTitle(`SMA (${title})`)
   }
 
   async function loadConfigFile() {
@@ -25,6 +34,7 @@
       return;
     }
     state.configPath = path;
+    setTitle(state.configPath);
     rustLoadConfigFile(state.configPath)
       .then((rustConfig) => {
         console.log(rustConfig);
@@ -59,7 +69,7 @@
     }
 
     state.configPath = path;
-
+    setTitle(state.configPath);
     rustSaveConfigFile(state.config.toRustConfig(), state.configPath).catch((err) => {
       console.log(err);
       errorMessage(err);
@@ -71,14 +81,25 @@
   }
 
   async function generateShortcutWithConfig() {
-    let path = await saveWindow('shortcut', ['lnk']);
-    if (path === null) {
-      return;
+    if (state.configPath === '') {
+      const answer = await ask(
+        'You need to save the config before creating a shortcut.\nDo you want to save this config?'
+      );
+
+      if (answer) {
+        await saveConfigFile();
+        generateShortcutWithConfig();
+      }
+    } else {
+      let path = await saveWindow('shortcut', ['lnk']);
+      if (path === null) {
+        return;
+      }
+      rustCreateShortcut(state.config.toRustConfig(), state.configPath, path).catch((err) => {
+        console.log(err);
+        errorMessage(err);
+      });
     }
-    rustCreateShortcut(state.config.toRustConfig(), state.configPath, path).catch((err) => {
-      console.log(err);
-      errorMessage(err);
-    });
   }
 
   function updateExitOnDisplay() {
