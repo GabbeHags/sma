@@ -22,7 +22,10 @@ pub fn run() -> anyhow::Result<()> {
         cli::Commands::CreateConfig {
             file_path,
             force_overide,
-        } => return Config::new_config_to_file(file_path, force_overide),
+        } => {
+            // Creates a new file and wants to exit the program gracefully
+            return Config::new_config_to_file(file_path, force_overide);
+        }
     }
     .with_context(|| anyhow!("Failed to verify the config."))?;
 

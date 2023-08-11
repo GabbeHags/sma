@@ -29,29 +29,35 @@ fn is_started_by_double_click() -> bool {
     parent_process_name == "explorer.exe"
 }
 
+fn start_gui_if_exist() -> anyhow::Result<bool> {
+    let gui_path = std::env::current_exe()?
+        .parent()
+        .unwrap()
+        .to_path_buf()
+        .join("sma-gui.exe");
+
+    if gui_path.try_exists().is_ok_and(|x| x) && std::env::args().len() == 1 {
+        Command::new(&gui_path)
+            .creation_flags(
+                // TODO: swap this out to the windows crate instead of winapi
+                winapi::um::winbase::DETACHED_PROCESS
+                    | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
+            )
+            .spawn()?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     if !is_started_by_double_click() {
         hide_console_window();
-        let gui_path = std::env::current_exe()?
-            .parent()
-            .unwrap()
-            .to_path_buf()
-            .join("sma-gui.exe");
-
-        if gui_path.try_exists().is_ok_and(|x| x) && std::env::args().len() == 1 {
-            _ = Command::new(&gui_path)
-                .creation_flags(
-                    // TODO: swap this out to the windows crate instead of winapi
-                    winapi::um::winbase::DETACHED_PROCESS
-                        | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
-                )
-                .spawn()?;
-        } else {
+        if !start_gui_if_exist()? {
             sma::run()?;
         }
     } else {
         sma::run()?;
     }
-
     Ok(())
 }

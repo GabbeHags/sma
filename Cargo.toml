@@ -48,3 +48,6 @@ mslnk = "0.1"
 # Local dependencies
 cli = {path = "cli"}
 config = {path = "config"}
+
+[workspace.dev-dependencies]
+mockall = "0.11"
