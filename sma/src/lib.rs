@@ -55,6 +55,7 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
     Ok(())
 }
 
+
 fn wait_and_kill(config: &Config<Verified>, children: &mut [Child]) -> anyhow::Result<()> {
     if let Some(exit_on_index) = config.get_exit_on() {
         wait_on(children, exit_on_index)?;
@@ -67,6 +68,7 @@ fn wait_and_kill(config: &Config<Verified>, children: &mut [Child]) -> anyhow::R
 
     Ok(())
 }
+
 
 fn spawn_processes(config: &Config<Verified>) -> anyhow::Result<Vec<Child>> {
     let mut children = Vec::new();
@@ -102,6 +104,7 @@ fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()>
     );
 
     sys.refresh_processes();
+
     let me = Pid::from_u32(std::process::id());
 
     let mut cascaded_pids = vec![vec![]];
@@ -123,11 +126,11 @@ fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()>
             }
         }
     }
+
     while updated {
         updated = false;
         layer += 1;
         let mut new_pids_found = vec![];
-
         for cascade_pid in &cascaded_pids[layer - 1] {
             for (pid, proc) in &processes {
                 if let Some(parent) = proc.parent().map(|parent| parent.as_u32()) {
@@ -149,7 +152,9 @@ fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()>
         .flatten()
         .filter_map(|pid| sys.process(Pid::from_u32(*pid)))
     {
+        #[cfg(debug_assertions)]
         println!("Killing sub child: [{}] {}", proc.pid(), proc.name());
+
         proc.kill();
     }
 
@@ -176,7 +181,10 @@ fn spawn_process(cmd_vec: &[String]) -> anyhow::Result<Child> {
     }
 
     let child = cmd.spawn()?;
+
+    #[cfg(debug_assertions)]
     println!("Spawning child: {}", child.id());
+
     Ok(child)
 }
 
@@ -190,7 +198,9 @@ fn wait_on<T: Into<usize>>(children: &mut [Child], index: T) -> anyhow::Result<(
 fn kill_remaining_children(children: &mut [Child]) -> anyhow::Result<()> {
     for child in children.iter_mut() {
         if child.try_wait()?.is_none() {
+            #[cfg(debug_assertions)]
             println!("Killing child: {}", child.id());
+
             if let Err(e) = child.kill() {
                 bail!(anyhow!("{e}")
                     .context(anyhow!("Could not kill child with pid `{}`", child.id())))
