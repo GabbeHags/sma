@@ -11,11 +11,12 @@ use path_clean::PathClean;
 use serde::{Deserialize, Serialize};
 
 pub trait VerifiedState: private::VerifiedStatePrivate {}
-#[derive(Debug, PartialEq)]
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Verified;
 impl VerifiedState for Verified {}
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UnVerified;
 impl VerifiedState for UnVerified {}
 
@@ -27,7 +28,7 @@ mod private {
 
 const CONFIG_VERSION: u32 = 1;
 
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(test, derive(Clone))]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config<State: VerifiedState> {
@@ -52,11 +53,9 @@ pub struct Config<State: VerifiedState> {
     // This is the index to the start list of applications that we spawned,
     // that we waiting for to exit and then we kill everything else we spawned.
     exit_on: Option<u8>,
-
-    // If Some then, this is the file path to the file that contained this config.
-    // else, this is created directly from the command line with arguments.
+    // This is the file path to the config file if it exists.
     #[serde(skip)]
-    file_path: Option<PathBuf>,
+    config_file_path: Option<PathBuf>,
     #[serde(skip)]
     _marker: PhantomData<State>,
 }
@@ -65,11 +64,11 @@ impl Default for Config<UnVerified> {
     fn default() -> Self {
         Self {
             version: CONFIG_VERSION,
-            cwd: Some(PathBuf::default().clean()),
+            cwd: None,
             cascade_kill: false,
             start: Default::default(),
             exit_on: Default::default(),
-            file_path: Default::default(),
+            config_file_path: None,
             _marker: Default::default(),
         }
     }
@@ -95,28 +94,36 @@ impl<State: VerifiedState> Config<State> {
     pub fn get_exit_on(&self) -> Option<u8> {
         self.exit_on
     }
+
+    pub fn get_config_file_path(&self) -> Option<&Path> {
+        self.config_file_path.as_deref()
+    }
 }
 
 impl Config<Verified> {
-    pub fn create_file(&self, file_path: PathBuf, force_overide: bool) -> anyhow::Result<()> {
+    pub fn create_file<P: AsRef<Path>>(
+        &self,
+        file_path: P,
+        force_overide: bool,
+    ) -> anyhow::Result<()> {
         let mut file_options = fs::OpenOptions::new();
-
+        let file_path = file_path.as_ref();
         if force_overide {
             file_options.create(true).truncate(true)
         } else {
             match file_path.try_exists() {
                 Ok(true) => {
-
                     bail!(
                         // TODO: remove this error msg, because this is not something the config cares about, this should be delegated to the caller.
-                        "The config file `{}` already exist.\nUse flag `-f`, `--force-overide` to force a override of the config file.", 
+                        // "The config file `{}` already exist.\nUse flag `-f`, `--force-overide` to force a override of the config file."
+                        "The config file you are trying to create `{}` already exist.",
                         file_path.display()
                     )
                 }
                 Ok(false) => file_options.create_new(true),
                 Err(e) => {
                     bail!(anyhow!(e).context(anyhow!(
-                        "Got an error while trying to see if `{}` exists.",
+                        "Got an error while trying to check if `{}` exists.",
                         file_path.display()
                     )))
                 }
@@ -124,7 +131,7 @@ impl Config<Verified> {
         }
         .write(true);
 
-        let mut file = file_options.open(&file_path).or_else(|e| {
+        let mut file = file_options.open(file_path).or_else(|e| {
             bail!(anyhow!(e).context(anyhow!("Could not open `{}`.", file_path.display())))
         })?;
         file.write_all(&serde_json::to_vec_pretty(self)?)?;
@@ -133,7 +140,10 @@ impl Config<Verified> {
 }
 
 impl Config<UnVerified> {
-    pub fn from_existing_config_file(file_path: PathBuf) -> anyhow::Result<Config<UnVerified>> {
+    pub fn from_existing_config_file<P: AsRef<Path>>(
+        file_path: P,
+    ) -> anyhow::Result<Config<UnVerified>> {
+        let file_path = file_path.as_ref();
         match file_path.try_exists() {
             Ok(true) => (),
             Ok(false) => bail!("Config file does not exist at `{}`.", file_path.display()),
@@ -147,18 +157,18 @@ impl Config<UnVerified> {
 
         if !file_path.is_file() {
             bail!(
-                "The given config file `{}` is not a json file.",
+                "The given path `{}` to the config, is not a valid file.",
                 file_path.display()
             )
         }
 
-        let json = fs::read(&file_path)?;
-        let mut config: Config<UnVerified> = serde_json::from_slice(&json).or_else(|e| {
-            bail!(anyhow!(e).context(anyhow!(
-                "Something went wrong when reading `{}`.",
-                file_path.display()
-            )))
-        })?;
+        let mut config: Config<UnVerified> =
+            serde_json::from_str(fs::read_to_string(file_path)?.as_str()).or_else(|e| {
+                bail!(anyhow!(e).context(anyhow!(
+                    "Something went wrong when reading `{}`.",
+                    file_path.display()
+                )))
+            })?;
 
         if let Some(cwd) = &config.cwd {
             if let Some(file_dir) = file_path.parent() {
@@ -166,17 +176,18 @@ impl Config<UnVerified> {
             }
         }
 
-        config.file_path = Some(file_path);
+        config.config_file_path = Some(file_path.to_path_buf());
 
         Ok(config)
     }
 
-    pub fn new_config_to_file(file_path: PathBuf, force_overide: bool) -> anyhow::Result<()> {
-        let config = Config {
-            file_path: Some(file_path.clone()),
-            ..Default::default()
-        };
-        config.verify()?.create_file(file_path, force_overide)
+    pub fn new_config_to_file<P: AsRef<Path>>(
+        file_path: P,
+        force_overide: bool,
+    ) -> anyhow::Result<()> {
+        Config::default()
+            .verify()?
+            .create_file(file_path, force_overide)
     }
 
     pub fn new(start: Vec<String>, exit_on: Option<u8>) -> anyhow::Result<Config<Verified>> {
@@ -186,7 +197,7 @@ impl Config<UnVerified> {
             cascade_kill: false,
             start,
             exit_on,
-            file_path: None,
+            config_file_path: None,
             _marker: Default::default(),
         }
         .verify()
@@ -202,7 +213,7 @@ impl Config<UnVerified> {
             cascade_kill: self.cascade_kill,
             start: self.start,
             exit_on: self.exit_on,
-            file_path: self.file_path,
+            config_file_path: self.config_file_path,
             _marker: Default::default(),
         })
     }
@@ -250,18 +261,158 @@ impl Config<UnVerified> {
 
 #[cfg(test)]
 mod tests_config_version_1 {
+    use std::str::FromStr;
+
     use super::*;
+    use tempdir::TempDir;
+
+    impl<MyState: VerifiedState, OtherState: VerifiedState> PartialEq<Config<OtherState>>
+        for Config<MyState>
+    {
+        fn eq(&self, other: &Config<OtherState>) -> bool {
+            self.version == other.version
+                && self.cwd == other.cwd
+                && self.cascade_kill == other.cascade_kill
+                && self.start == other.start
+                && self.exit_on == other.exit_on
+        }
+    }
+
+    #[test]
+    fn test_new_config_to_file_overide_true() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let config_name = temp_dir.path().join("test_config.json");
+        Config::new_config_to_file(&config_name, false).unwrap();
+        Config::new_config_to_file(&config_name, true).unwrap();
+
+        assert_eq!(
+            Config::default(),
+            Config::from_existing_config_file(&config_name).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_new_config_to_file_overide_false() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let config_name = temp_dir.path().join("test_config.json");
+        Config::new_config_to_file(&config_name, false).unwrap();
+
+        assert_eq!(
+            Config::default(),
+            Config::from_existing_config_file(&config_name).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_err_file_does_not_exist() {
+        let name = "does_not_exist.json";
+        assert_eq!(
+            format!("Config file does not exist at `{}`.", name),
+            Config::from_existing_config_file(PathBuf::from_str(name).unwrap())
+                .unwrap_err()
+                .to_string()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_err_not_json_file() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        assert_eq!(
+            format!(
+                "The given path `{}` to the config, is not a valid file.",
+                temp_dir.path().display()
+            ),
+            Config::from_existing_config_file(temp_dir.path())
+                .unwrap_err()
+                .to_string()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_err_something_went_wrong() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let config_name = temp_dir.path().join("test_config");
+        fs::File::create(&config_name).unwrap();
+        assert_eq!(
+            format!(
+                "Something went wrong when reading `{}`.",
+                config_name.display()
+            ),
+            Config::from_existing_config_file(&config_name)
+                .unwrap_err()
+                .to_string()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_default_1() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let config_name = temp_dir.path().join("test_config.json");
+        Config::default()
+            .verify()
+            .unwrap()
+            .create_file(&config_name, false)
+            .unwrap();
+
+        assert_eq!(
+            Config::default(),
+            Config::from_existing_config_file(&config_name).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_default_2() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let config_name = temp_dir.path().join("test_config.json");
+        Config::new_config_to_file(&config_name, false).unwrap();
+
+        assert_eq!(
+            Config::default(),
+            Config::from_existing_config_file(&config_name).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_from_existing_config_file_with_cwd() {
+        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let test_dir_name = temp_dir.path().join("test_dir");
+        fs::create_dir(&test_dir_name).unwrap();
+        let config_name = temp_dir.path().join("test_config.json");
+        let config = Config {
+            cwd: Some(test_dir_name.clone()),
+            ..Default::default()
+        };
+
+        config
+            .clone()
+            .verify()
+            .unwrap()
+            .create_file(&config_name, false)
+            .unwrap();
+
+        assert_eq!(
+            config,
+            Config::from_existing_config_file(&config_name).unwrap()
+        )
+    }
+
+    #[test]
+    fn test_verify_eq() {
+        let config_unverified = Config::default();
+        let config_verified = Config::default().verify().unwrap();
+        assert_eq!(config_unverified, config_verified);
+    }
 
     #[test]
     fn test_default_config() {
         let config_default = Config::default();
-        let config = Config {
+        let config: Config<UnVerified> = Config {
             version: 1,
-            cwd: Some(PathBuf::from(".")),
+            cwd: None,
             cascade_kill: false,
             start: vec![],
             exit_on: None,
-            file_path: None,
+            config_file_path: None,
             _marker: Default::default(),
         };
         assert_eq!(config, config_default)

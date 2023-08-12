@@ -16,3 +16,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 
 # Local dependencies
+
+
+[dev-dependencies]
+tempdir = { workspace = true }
