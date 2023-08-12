@@ -49,5 +49,6 @@ mslnk = "0.1"
 cli = {path = "cli"}
 config = {path = "config"}
 
-[workspace.dev-dependencies]
+# dev-dependencies
 mockall = "0.11"
+tempdir = "0.3"
