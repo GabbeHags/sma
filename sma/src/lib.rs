@@ -43,7 +43,15 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
         std::env::set_current_dir(cwd).with_context(|| {
             anyhow!("Failed to change working directory to `{}`", cwd.display())
         })?;
+    } else if let Some(config_path) = config.get_config_file_path() {
+        std::env::set_current_dir(config_path).with_context(|| {
+            anyhow!(
+                "Failed to change working directory to `{}`",
+                config_path.display()
+            )
+        })?;
     }
+
     Ok(())
 }
 

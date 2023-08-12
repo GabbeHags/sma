@@ -90,6 +90,8 @@ fn set_window_title(title: String) -> Result<(), String> {
     todo!()
 }
 
+// TODO: add bindings to do a test run of the application from the gui.
+
 fn main() -> anyhow::Result<()> {
     gui()
 }
