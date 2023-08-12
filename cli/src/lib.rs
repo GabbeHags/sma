@@ -72,7 +72,6 @@ fn cli_config_file_path_validator(file_path: &str) -> anyhow::Result<PathBuf> {
 
     // Extension checks
     check_extension(&file_path)?;
-
     Ok(file_path)
 }
 
@@ -84,8 +83,9 @@ fn cli_config_create_config_validator(file_path: &str) -> anyhow::Result<PathBuf
     Ok(file_path)
 }
 
-fn check_extension(file_path: &Path) -> anyhow::Result<()> {
+fn check_extension<P: AsRef<Path>>(file_path: P) -> anyhow::Result<()> {
     // Extension checks
+    let file_path = file_path.as_ref();
     match file_path.extension() {
         Some(ext) => {
             let ext = match ext.to_str() {
@@ -99,4 +99,51 @@ fn check_extension(file_path: &Path) -> anyhow::Result<()> {
         None => bail!("Config file does not have the correct extension. Expected json, but found no extension."),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests_cli {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn test_check_extension_no_extension() {
+        let file_path = PathBuf::from_str("test_file").unwrap();
+        let err_str = check_extension(file_path).unwrap_err().to_string();
+
+        assert_eq!("Config file does not have the correct extension. Expected json, but found no extension.".to_string(), err_str);
+    }
+
+    #[test]
+    fn test_check_extension_wrong_extension() {
+        let file_path = PathBuf::from_str("test_file.exe").unwrap();
+        let err_str = check_extension(file_path).unwrap_err().to_string();
+
+        assert_eq!(
+            "Config file does not have the correct extension. Expected json, but found `exe`."
+                .to_string(),
+            err_str
+        );
+    }
+
+    #[test]
+    fn test_cli_config_create_config_validator() {
+        let file_path_str = "test_file.json";
+
+        assert_eq!(
+            std::env::current_dir().unwrap().join(file_path_str),
+            cli_config_create_config_validator(file_path_str).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_cli_config_file_path_validator() {
+        let file_path_str = "test_file.json";
+
+        assert_eq!(
+            std::env::current_dir().unwrap().join(file_path_str),
+            cli_config_create_config_validator(file_path_str).unwrap()
+        );
+    }
 }
