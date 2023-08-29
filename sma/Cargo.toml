@@ -22,3 +22,7 @@ winapi = { workspace = true }
 # Local dependencies
 cli = { workspace = true }
 config = {workspace = true}
+
+
+[dev-dependencies]
+tempdir = { workspace = true }

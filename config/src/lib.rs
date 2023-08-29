@@ -101,6 +101,7 @@ impl<State: VerifiedState> Config<State> {
 }
 
 impl Config<Verified> {
+    /// Writes this config to a file at `file_path`, if `force_overide` is true we will overide any file with that file path.
     pub fn create_file<P: AsRef<Path>>(
         &self,
         file_path: P,
@@ -140,6 +141,7 @@ impl Config<Verified> {
 }
 
 impl Config<UnVerified> {
+    /// Reads in a config from a file at `file_path`
     pub fn from_existing_config_file<P: AsRef<Path>>(
         file_path: P,
     ) -> anyhow::Result<Config<UnVerified>> {
@@ -181,6 +183,7 @@ impl Config<UnVerified> {
         Ok(config)
     }
 
+    /// Writes a new config at `file_path` with the default settings.
     pub fn new_config_to_file<P: AsRef<Path>>(
         file_path: P,
         force_overide: bool,
@@ -190,19 +193,25 @@ impl Config<UnVerified> {
             .create_file(file_path, force_overide)
     }
 
-    pub fn new(start: Vec<String>, exit_on: Option<u8>) -> anyhow::Result<Config<Verified>> {
+    /// Creates a new Config
+    pub fn new(
+        cwd: Option<PathBuf>,
+        cascade_kill: bool,
+        start: Vec<String>,
+        exit_on: Option<u8>,
+    ) -> Config<UnVerified> {
         Config {
             version: CONFIG_VERSION,
-            cwd: None,
-            cascade_kill: false,
+            cwd,
+            cascade_kill,
             start,
             exit_on,
             config_file_path: None,
             _marker: Default::default(),
         }
-        .verify()
     }
 
+    /// Verifies the Config so its valid to use.
     pub fn verify(self) -> anyhow::Result<Config<Verified>> {
         self.validate_start()?;
         self.validate_exit_on()?;
@@ -221,9 +230,15 @@ impl Config<UnVerified> {
     fn validate_cwd(&self) -> anyhow::Result<()> {
         // checks so the given cwd is an existing directory
         if let Some(cwd) = &self.cwd {
+            if !cwd.exists() {
+                bail!(
+                    "The given current working directory (cwd) `{}` does not exits",
+                    cwd.display()
+                )
+            }
             if !cwd.is_dir() {
                 bail!(
-                    "The given current working directory (cwd) `{}` is not a directory",
+                    "The given current working directory (cwd) `{}` exist but is not a directory",
                     cwd.display()
                 )
             }
@@ -261,7 +276,7 @@ impl Config<UnVerified> {
 
 #[cfg(test)]
 mod tests_config_version_1 {
-    use std::str::FromStr;
+    use std::{fs::File, str::FromStr};
 
     use super::*;
     use tempdir::TempDir;
@@ -276,6 +291,13 @@ mod tests_config_version_1 {
                 && self.start == other.start
                 && self.exit_on == other.exit_on
         }
+    }
+
+    #[test]
+    fn test_new_eq_default() {
+        let config = Config::new(None, false, vec![], None);
+        let other = Config::default();
+        assert_eq!(config, other);
     }
 
     #[test]
@@ -428,7 +450,28 @@ mod tests_config_version_1 {
     }
 
     #[test]
-    fn test_validate_cwd_err() {
+    fn test_validate_cwd_err_is_not_dir() {
+        let existing_dir = TempDir::new("test_validate_cwd_err_is_not_dir")
+            .unwrap()
+            .into_path();
+        let file = existing_dir.join("test.aaa");
+        File::create(&file).unwrap();
+        let config = Config {
+            cwd: Some(file.to_path_buf()),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            format!(
+                "The given current working directory (cwd) `{}` exist but is not a directory",
+                file.display()
+            ),
+            config.validate_cwd().unwrap_err().to_string()
+        )
+    }
+
+    #[test]
+    fn test_validate_cwd_err_not_exist() {
         let none_existing_dir = "./does_not_exist";
         let config = Config {
             cwd: Some(none_existing_dir.into()),
@@ -437,7 +480,7 @@ mod tests_config_version_1 {
 
         assert_eq!(
             format!(
-                "The given current working directory (cwd) `{}` is not a directory",
+                "The given current working directory (cwd) `{}` does not exits",
                 none_existing_dir
             ),
             config.validate_cwd().unwrap_err().to_string()

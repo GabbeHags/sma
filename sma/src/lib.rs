@@ -15,7 +15,9 @@ pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
 
 pub fn run() -> anyhow::Result<()> {
     let config = match cli::get_args() {
-        cli::Commands::Start { start, exit_on } => Config::new(start, exit_on),
+        cli::Commands::Start { start, exit_on } => {
+            Config::new(None, false, start, exit_on).verify()
+        }
         cli::Commands::Config { file_path } => {
             Config::from_existing_config_file(file_path)?.verify()
         }
@@ -44,7 +46,7 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
             anyhow!("Failed to change working directory to `{}`", cwd.display())
         })?;
     } else if let Some(config_path) = config.get_config_file_path() {
-        std::env::set_current_dir(config_path).with_context(|| {
+        std::env::set_current_dir(config_path.parent().unwrap()).with_context(|| {
             anyhow!(
                 "Failed to change working directory to `{}`",
                 config_path.display()
@@ -54,7 +56,6 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 fn wait_and_kill(config: &Config<Verified>, children: &mut [Child]) -> anyhow::Result<()> {
     if let Some(exit_on_index) = config.get_exit_on() {
@@ -68,7 +69,6 @@ fn wait_and_kill(config: &Config<Verified>, children: &mut [Child]) -> anyhow::R
 
     Ok(())
 }
-
 
 fn spawn_processes(config: &Config<Verified>) -> anyhow::Result<Vec<Child>> {
     let mut children = Vec::new();
@@ -208,4 +208,82 @@ fn kill_remaining_children(children: &mut [Child]) -> anyhow::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod test_sma {
+
+    use tempdir::TempDir;
+
+    use super::*;
+
+    #[test]
+    fn test_change_cwd_config_path_none_cwd_none() {
+        let cwd = std::env::current_dir().unwrap();
+        let config = Config::new(None, false, vec![], None).verify().unwrap();
+        change_cwd(&config).unwrap();
+        assert_eq!(cwd, std::env::current_dir().unwrap());
+    }
+
+    #[test]
+    fn test_change_cwd_config_path_none_cwd_some() {
+        let cwd = std::env::current_dir().unwrap();
+        let dir = TempDir::new("test_change_cwd_config_path_none_cwd_some").unwrap();
+        let config_path = dir.path().join("config.json");
+        let config = Config::new(
+            Some(config_path.parent().unwrap().to_path_buf()),
+            false,
+            vec![],
+            None,
+        )
+        .verify()
+        .unwrap();
+        change_cwd(&config).unwrap();
+        let new_cwd = std::env::current_dir().unwrap();
+        assert_ne!(cwd, new_cwd);
+        assert_eq!(config_path.parent().unwrap(), new_cwd);
+    }
+
+    #[test]
+    fn test_change_cwd_config_path_some_cwd_none() {
+        let cwd = std::env::current_dir().unwrap();
+        let dir = TempDir::new("test_change_cwd_config_path_some_cwd_none").unwrap();
+        let config_path = dir.path().join("config.json");
+        Config::default()
+            .verify()
+            .unwrap()
+            .create_file(&config_path, false)
+            .unwrap();
+        let config = Config::from_existing_config_file(&config_path)
+            .unwrap()
+            .verify()
+            .unwrap();
+        change_cwd(&config).unwrap();
+        let new_cwd = std::env::current_dir().unwrap();
+        assert_ne!(cwd, new_cwd);
+        assert_eq!(config_path.parent().unwrap(), new_cwd);
+    }
+
+    #[test]
+    fn test_change_cwd_config_path_some_cwd_some() {
+        let cwd = std::env::current_dir().unwrap();
+        let dir_1 = TempDir::new("test_change_cwd_config_path_some_cwd_none_1").unwrap();
+        let dir_2 = TempDir::new("test_change_cwd_config_path_some_cwd_none_2").unwrap();
+        let config_path = dir_1.path().join("config.json");
+        let new_cwd = dir_2.path();
+        Config::new(Some(new_cwd.to_path_buf()), false, vec![], None)
+            .verify()
+            .unwrap()
+            .create_file(&config_path, false)
+            .unwrap();
+
+        let config = Config::from_existing_config_file(&config_path)
+            .unwrap()
+            .verify()
+            .unwrap();
+        change_cwd(&config).unwrap();
+        let new_actual_cwd = std::env::current_dir().unwrap();
+        assert_ne!(cwd, new_actual_cwd);
+        assert_eq!(new_actual_cwd, new_cwd);
+    }
 }
