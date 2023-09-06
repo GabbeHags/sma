@@ -217,6 +217,24 @@ mod test_sma {
 
     use super::*;
 
+    const TEST_EXE: &str = concat!(env!("OUT_DIR"), "/test.exe");
+
+    #[test]
+    fn test_spawn_process() {
+        let now = std::time::Instant::now();
+        let child = spawn_process(&[TEST_EXE.to_string(), "SLEEP".to_string(), "2".to_string()])
+            .unwrap()
+            .wait()
+            .unwrap();
+        assert!(child.success());
+        let after = std::time::Instant::now();
+        let diff_millis = (after - now).as_millis();
+        assert!((2000..2300).contains(&diff_millis))
+
+        // println!("{:?}", stdout);
+        // assert!(output.status.success());
+    }
+
     #[test]
     fn test_change_cwd_config_path_none_cwd_none() {
         let cwd = std::env::current_dir().unwrap();
