@@ -26,3 +26,5 @@ config = {workspace = true}
 
 [dev-dependencies]
 tempdir = { workspace = true }
+test-binary = { workspace = true }
+

@@ -1,6 +1,7 @@
 use config::{Config, Verified};
 
 use std::{
+    ffi::OsStr,
     os::windows::process::CommandExt,
     process::{Child, Command},
 };
@@ -161,11 +162,11 @@ fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()>
     Ok(())
 }
 
-fn spawn_process(cmd_vec: &[String]) -> anyhow::Result<Child> {
+fn spawn_process<S: AsRef<str> + AsRef<OsStr>>(cmd_vec: &[S]) -> anyhow::Result<Child> {
     let mut cmd: Command;
 
     if let Some(prog) = cmd_vec.get(0) {
-        cmd = Command::new(prog);
+        cmd = Command::new::<&OsStr>(prog.as_ref());
     } else {
         bail!("A program in `start` is empty.")
     }
@@ -217,22 +218,62 @@ mod test_sma {
 
     use super::*;
 
-    const TEST_EXE: &str = concat!(env!("OUT_DIR"), "/test.exe");
+    mod testbin {
+        #![allow(non_upper_case_globals)]
+        use test_binary::build_test_binary_once;
+
+        build_test_binary_once!(test, "testbins");
+    }
 
     #[test]
-    fn test_spawn_process() {
-        let now = std::time::Instant::now();
-        let child = spawn_process(&[TEST_EXE.to_string(), "SLEEP".to_string(), "2".to_string()])
-            .unwrap()
-            .wait()
-            .unwrap();
-        assert!(child.success());
-        let after = std::time::Instant::now();
-        let diff_millis = (after - now).as_millis();
-        assert!((2000..2300).contains(&diff_millis))
+    fn test_spawn_process_empty() {
+        let cmd: Vec<String> = vec![];
+        let child_exit_status = spawn_process(&cmd);
 
-        // println!("{:?}", stdout);
-        // assert!(output.status.success());
+        assert_eq!(
+            "A program in `start` is empty.",
+            child_exit_status.unwrap_err().to_string().as_str()
+        )
+    }
+
+    #[test]
+    fn test_spawn_process_one_sleep() {
+        let test_bin_path = testbin::path_to_test();
+        let now = std::time::Instant::now();
+        let child_exit_status =
+            spawn_process(&[test_bin_path.as_os_str().to_str().unwrap(), "SLEEP", "2"])
+                .unwrap()
+                .wait()
+                .unwrap();
+        let after = std::time::Instant::now();
+        assert!(child_exit_status.success());
+        let diff_millis = (after - now).as_millis();
+        assert!((2000..2200).contains(&diff_millis))
+    }
+
+    #[test]
+    fn test_spawn_process_write() {
+        let test_bin_path = testbin::path_to_test();
+        let file_name = "test_file_name";
+        let file_path = TempDir::new("test_dir")
+            .unwrap()
+            .into_path()
+            .join(file_name);
+        let write_content = "test";
+        let child_exit_status = spawn_process(&[
+            test_bin_path.as_os_str().to_str().unwrap(),
+            "WRITE",
+            file_path.to_str().unwrap(),
+            write_content,
+        ])
+        .unwrap()
+        .wait()
+        .unwrap();
+        assert!(child_exit_status.success());
+
+        let read_content = std::fs::read_to_string(file_path.as_path()).unwrap();
+        assert!(!read_content.is_empty());
+        assert_eq!(write_content, &read_content)
     }
 
     #[test]
