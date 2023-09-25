@@ -265,9 +265,10 @@ mod test_sma {
         .verify()
         .unwrap();
         let err = spawn_processes(&config).unwrap_err().to_string();
+        let wrong_path = test_bin_path.replace('\\', "");
         assert_eq!(
             err,
-            r#"There seems to be a problem with the finding the executable for the program at index `0`. The executable we looked for was D:ProgrammingRustsmasmatestbinstesttargetdebugtest.exe which does not exist. This might be because "\\" was used instead of "/"."#
+            format!("There seems to be a problem with the finding the executable for the program at index `0`. The executable we looked for was {wrong_path} which does not exist. This might be because \"\\\\\" was used instead of \"/\".")
         )
     }
 
