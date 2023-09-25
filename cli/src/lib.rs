@@ -1,8 +1,13 @@
-use std::path::{Path, PathBuf};
+use std::{
+    ffi::OsString,
+    path::{Path, PathBuf},
+};
 
 use anyhow::bail;
 use clap::{Parser, Subcommand};
 use path_clean::PathClean;
+
+
 
 const CONFIG_FILE_NAME: &str = "config.json";
 
@@ -23,8 +28,13 @@ struct Cli {
     pub command: Commands,
 }
 
-pub fn get_args() -> Commands {
-    Cli::parse().command
+pub fn parse_args<Args, T>(args: Args) -> anyhow::Result<Commands>
+where
+    Args: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
+    Ok(Cli::try_parse_from(args)?.command)
+    // Cli::parse().command
 }
 
 #[derive(Debug, Subcommand)]
@@ -84,21 +94,23 @@ fn cli_config_create_config_validator(file_path: &str) -> anyhow::Result<PathBuf
 }
 
 fn check_extension<P: AsRef<Path>>(file_path: P) -> anyhow::Result<()> {
-    // Extension checks
-    let file_path = file_path.as_ref();
-    match file_path.extension() {
-        Some(ext) => {
-            let ext = match ext.to_str() {
-                Some(ext) => ext,
-                None => bail!("Config file does not have the correct extension. Expected json, but found a extension that contains none utf-8 symbols."),
-            };
-            if ext != "json" {
-                bail!("Config file does not have the correct extension. Expected json, but found `{}`.", ext.to_string());
+    fn priv_check_extension(file_path: &Path) -> anyhow::Result<()> {
+        match file_path.extension() {
+            Some(ext) => {
+                let ext = match ext.to_str() {
+                    Some(ext) => ext,
+                    None => bail!("Config file does not have the correct extension. Expected json, but found a extension that contains none utf-8 symbols."),
+                };
+                if ext != "json" {
+                    bail!("Config file does not have the correct extension. Expected json, but found `{}`.", ext.to_string());
+                }
             }
+            None => bail!("Config file does not have the correct extension. Expected json, but found no extension."),
         }
-        None => bail!("Config file does not have the correct extension. Expected json, but found no extension."),
+        Ok(())
     }
-    Ok(())
+    // Extension checks
+    priv_check_extension(file_path.as_ref())
 }
 
 #[cfg(test)]
@@ -106,6 +118,85 @@ mod tests_cli {
     use std::str::FromStr;
 
     use super::*;
+
+    #[test]
+    fn test_get_args_create_config_path_bad_extension() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["create-config".into(), "apa.test".into()]);
+        parse_args(args).unwrap_err();
+    }
+
+    #[test]
+    fn test_get_args_create_config_path_no_extension() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["create-config".into(), "apa".into()]);
+        parse_args(args).unwrap_err();
+    }
+
+    #[test]
+    fn test_get_args_create_config_path_overide() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["create-config".into(), "apa.json".into(), "-f".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_create_config_path() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["create-config".into(), "apa.json".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_create_config() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["create-config".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_config() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["config".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_config_good_extension() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["config".into(), "test.json".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_config_wrong_extension() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["config".into(), "test.apa".into()]);
+
+        parse_args(args).unwrap_err();
+    }
+
+    #[test]
+    fn test_get_args_config_no_extension() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["config".into(), "test".into()]);
+
+        parse_args(args).unwrap_err();
+    }
+
+    #[test]
+    fn test_get_args_start_not_exit() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["start".into(), "".into()]);
+        parse_args(args).unwrap();
+    }
+
+    #[test]
+    fn test_get_args_start_wtih_exit() {
+        let mut args = std::env::args_os().collect::<Vec<_>>();
+        args.extend(["start".into(), "".into(), "0".into()]);
+        parse_args(args).unwrap();
+    }
 
     #[test]
     fn test_check_extension_no_extension() {

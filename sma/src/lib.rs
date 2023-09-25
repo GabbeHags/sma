@@ -3,6 +3,7 @@ use config::{Config, Verified};
 use std::{
     ffi::OsStr,
     os::windows::process::CommandExt,
+    path::{Path, PathBuf},
     process::{Child, Command},
 };
 
@@ -11,11 +12,8 @@ use sysinfo::{
     Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt,
 };
 
-pub const DETACHED_PROCESS: u32 = 0x00000008;
-pub const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
-
 pub fn run() -> anyhow::Result<()> {
-    let config = match cli::get_args() {
+    let config = match cli::parse_args(std::env::args())? {
         cli::Commands::Start { start, exit_on } => {
             Config::new(None, false, start, exit_on).verify()
         }
@@ -47,10 +45,11 @@ fn change_cwd(config: &Config<Verified>) -> anyhow::Result<()> {
             anyhow!("Failed to change working directory to `{}`", cwd.display())
         })?;
     } else if let Some(config_path) = config.get_config_file_path() {
-        std::env::set_current_dir(config_path.parent().unwrap()).with_context(|| {
+        let config_dir = config_path.parent().unwrap();
+        std::env::set_current_dir(config_dir).with_context(|| {
             anyhow!(
                 "Failed to change working directory to `{}`",
-                config_path.display()
+                config_dir.display()
             )
         })?;
     }
@@ -80,7 +79,15 @@ fn spawn_processes(config: &Config<Verified>) -> anyhow::Result<Vec<Child>> {
         if cmd_str.is_empty() {
             bail!("The program at index `{index}` in `start` is empty.")
         }
+
         if let Some(cmd_vec) = shlex::split(cmd_str) {
+            if cmd_str.contains('\\') {
+                if let Some(exe) = cmd_vec.get(0) {
+                    if !PathBuf::from(exe).exists() {
+                        bail!("There seems to be a problem with the finding the executable for the program at index `{index}`. The executable we looked for was {exe} which does not exist. This might be because \"\\\\\" was used instead of \"/\".")
+                    }
+                }
+            }
             cmd_vecs.push(cmd_vec);
         } else {
             bail!("The program at index `{index}` in `start` is erroneous")
@@ -162,21 +169,28 @@ fn kill_remaining_children_cascade(children: &mut [Child]) -> anyhow::Result<()>
     Ok(())
 }
 
-fn spawn_process<S: AsRef<str> + AsRef<OsStr>>(cmd_vec: &[S]) -> anyhow::Result<Child> {
+fn spawn_process<S: AsRef<OsStr>>(cmd_vec: &[S]) -> anyhow::Result<Child> {
     let mut cmd: Command;
 
     if let Some(prog) = cmd_vec.get(0) {
-        cmd = Command::new::<&OsStr>(prog.as_ref());
+        cmd = Command::new::<_>(prog.as_ref());
+        #[cfg(debug_assertions)]
+        dbg!(&cmd);
     } else {
         bail!("A program in `start` is empty.")
     }
 
+    // This cfg makes it possible to see what spawned processes print to the console.
+    // If false they will have there own std(in/out).
     if cfg!(debug_assertions) {
         cmd.args(&cmd_vec[1..]);
     } else {
+        const DETACHED_PROCESS: u32 = 0x00000008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
         cmd.creation_flags(
             // TODO: swap this out to the windows crate instead of winapi
-            winapi::um::winbase::DETACHED_PROCESS | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
+            // winapi::um::winbase::DETACHED_PROCESS | winapi::um::winbase::CREATE_NEW_PROCESS_GROUP,
+            DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
         )
         .args(&cmd_vec[1..]);
     }
@@ -214,6 +228,8 @@ fn kill_remaining_children(children: &mut [Child]) -> anyhow::Result<()> {
 #[cfg(test)]
 mod test_sma {
 
+    use std::time::Duration;
+
     use tempdir::TempDir;
 
     use super::*;
@@ -223,6 +239,44 @@ mod test_sma {
         use test_binary::build_test_binary_once;
 
         build_test_binary_once!(test, "testbins");
+    }
+
+    // #[test]
+    // fn test_shlex() {
+    //     let split = shlex::split("D:/Rust/test.exe DEBUG SLEEP 2").unwrap();
+    //     dbg!(split);
+    //     let split = shlex::split("D:\\Rust\\test.exe DEBUG SLEEP 2").unwrap();
+    //     dbg!(split);
+    //     spawn_process(&[format!("{} DEBUG SLEEP 2",testbin::path_to_test().to_str().unwrap())]).unwrap();
+    //     panic!()
+    // }
+
+    #[test]
+    fn test_spawn_processes_fail_bad_executable_path() {
+        let test_bin_path = testbin::path_to_test().into_string().unwrap();
+        // .replace('\\', "/");
+
+        let config = Config::new(
+            None,
+            false,
+            vec![format!("{} DEBUG SLEEP 2", test_bin_path.clone())],
+            None,
+        )
+        .verify()
+        .unwrap();
+        let err = spawn_processes(&config).unwrap_err().to_string();
+        assert_eq!(
+            err,
+            r#"There seems to be a problem with the finding the executable for the program at index `0`. The executable we looked for was D:ProgrammingRustsmasmatestbinstesttargetdebugtest.exe which does not exist. This might be because "\\" was used instead of "/"."#
+        )
+    }
+
+    #[test]
+    fn test_spawn_processes_empty() {
+        let config = Config::default().verify().unwrap();
+        let children = spawn_processes(&config).unwrap();
+        assert_eq!(config.get_start().len(), children.len());
+        assert_eq!(0, children.len());
     }
 
     #[test]
@@ -238,27 +292,25 @@ mod test_sma {
 
     #[test]
     fn test_spawn_process_one_sleep() {
-        let test_bin_path = testbin::path_to_test();
+        let test_bin_path = testbin::path_to_test().into_string().unwrap();
         let now = std::time::Instant::now();
-        let child_exit_status =
-            spawn_process(&[test_bin_path.as_os_str().to_str().unwrap(), "SLEEP", "2"])
-                .unwrap()
-                .wait()
-                .unwrap();
+        let child_exit_status = spawn_process(&[test_bin_path.as_str(), "SLEEP", "1"])
+            .unwrap()
+            .wait()
+            .unwrap();
         let after = std::time::Instant::now();
         assert!(child_exit_status.success());
         let diff_millis = (after - now).as_millis();
-        assert!((2000..2200).contains(&diff_millis))
+        assert!((1000..1200).contains(&diff_millis))
     }
 
     #[test]
     fn test_spawn_process_write() {
         let test_bin_path = testbin::path_to_test();
         let file_name = "test_file_name";
-        let file_path = TempDir::new("test_dir")
-            .unwrap()
-            .into_path()
-            .join(file_name);
+        let temp_dir = TempDir::new("test_spawn_process_write").unwrap();
+        let file_path = temp_dir.path().join(file_name);
+
         let write_content = "test";
         let child_exit_status = spawn_process(&[
             test_bin_path.as_os_str().to_str().unwrap(),
@@ -273,7 +325,10 @@ mod test_sma {
 
         let read_content = std::fs::read_to_string(file_path.as_path()).unwrap();
         assert!(!read_content.is_empty());
-        assert_eq!(write_content, &read_content)
+        assert_eq!(write_content, &read_content);
+
+        // cleanup
+        drop(temp_dir)
     }
 
     #[test]
@@ -301,6 +356,10 @@ mod test_sma {
         let new_cwd = std::env::current_dir().unwrap();
         assert_ne!(cwd, new_cwd);
         assert_eq!(config_path.parent().unwrap(), new_cwd);
+
+        // cleanup
+        std::env::set_current_dir(cwd).unwrap();
+        drop(dir)
     }
 
     #[test]
@@ -321,6 +380,10 @@ mod test_sma {
         let new_cwd = std::env::current_dir().unwrap();
         assert_ne!(cwd, new_cwd);
         assert_eq!(config_path.parent().unwrap(), new_cwd);
+
+        // cleanup
+        std::env::set_current_dir(cwd).unwrap();
+        drop(dir)
     }
 
     #[test]
@@ -344,5 +407,76 @@ mod test_sma {
         let new_actual_cwd = std::env::current_dir().unwrap();
         assert_ne!(cwd, new_actual_cwd);
         assert_eq!(new_actual_cwd, new_cwd);
+
+        // cleanup
+        std::env::set_current_dir(cwd).unwrap();
+        drop(dir_1);
+        drop(dir_2);
+    }
+
+    #[test]
+    fn test_change_cwd_to_none_existing() {
+        let cwd = std::env::current_dir().unwrap();
+        let temp_dir = TempDir::new("test_change_cwd_to_none_existing").unwrap();
+        let config = Config::new(Some(temp_dir.path().to_path_buf()), false, vec![], None)
+            .verify()
+            .unwrap();
+
+        let removed_temp_dir = temp_dir.path().to_path_buf();
+
+        // remove temp_dir
+        drop(temp_dir);
+
+        std::thread::sleep(Duration::from_secs(1));
+
+        let err = change_cwd(&config).unwrap_err();
+
+        let new_actual_cwd = std::env::current_dir().unwrap();
+        assert_eq!(cwd, new_actual_cwd);
+
+        assert_eq!(
+            format!(
+                "Failed to change working directory to `{}`",
+                removed_temp_dir.display()
+            ),
+            err.to_string()
+        );
+    }
+
+    #[test]
+    fn test_change_cwd_none_cwd_to_none_existing() {
+        let cwd = std::env::current_dir().unwrap();
+        let temp_dir = TempDir::new("test_change_cwd_to_none_existing").unwrap();
+        let file_name = "config.json";
+        Config::new(None, false, vec![], None)
+            .verify()
+            .unwrap()
+            .create_file(temp_dir.path().join(file_name), false)
+            .unwrap();
+
+        let config = Config::from_existing_config_file(temp_dir.path().join(file_name))
+            .unwrap()
+            .verify()
+            .unwrap();
+
+        let removed_temp_dir = temp_dir.path().to_path_buf();
+
+        // remove temp_dir
+        drop(temp_dir);
+
+        std::thread::sleep(Duration::from_secs(1));
+
+        let err = change_cwd(&config).unwrap_err();
+
+        let new_actual_cwd = std::env::current_dir().unwrap();
+        assert_eq!(cwd, new_actual_cwd);
+
+        assert_eq!(
+            format!(
+                "Failed to change working directory to `{}`",
+                removed_temp_dir.display()
+            ),
+            err.to_string()
+        );
     }
 }

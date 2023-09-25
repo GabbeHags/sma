@@ -107,8 +107,11 @@ impl Config<Verified> {
         file_path: P,
         force_overide: bool,
     ) -> anyhow::Result<()> {
+        self.priv_create_file(file_path.as_ref(), force_overide)
+    }
+
+    fn priv_create_file(&self, file_path: &Path, force_overide: bool) -> anyhow::Result<()> {
         let mut file_options = fs::OpenOptions::new();
-        let file_path = file_path.as_ref();
         if force_overide {
             file_options.create(true).truncate(true)
         } else {
@@ -145,7 +148,10 @@ impl Config<UnVerified> {
     pub fn from_existing_config_file<P: AsRef<Path>>(
         file_path: P,
     ) -> anyhow::Result<Config<UnVerified>> {
-        let file_path = file_path.as_ref();
+        Self::priv_from_existing_config_file(file_path.as_ref())
+    }
+
+    fn priv_from_existing_config_file(file_path: &Path) -> anyhow::Result<Config<UnVerified>> {
         match file_path.try_exists() {
             Ok(true) => (),
             Ok(false) => bail!("Config file does not exist at `{}`.", file_path.display()),
@@ -294,6 +300,44 @@ mod tests_config_version_1 {
     }
 
     #[test]
+    fn test_create_file_overwrite() {
+        let file_name = "already_exist";
+        let temp_dir = TempDir::new("test_create_file_overwrite").unwrap();
+        let path = temp_dir.path().join(file_name);
+        std::fs::write(path.as_path(), "").unwrap();
+        let config = Config::new(None, false, vec![], None).verify().unwrap();
+        config.create_file(path.as_path(), true).unwrap();
+
+        // cleanup
+        drop(temp_dir)
+    }
+
+    #[test]
+    fn test_create_file() {
+        let file_name = "already_exist";
+        let temp_dir = TempDir::new("test_create_file").unwrap();
+        let path = temp_dir.path().join(file_name);
+
+        std::fs::write(path.as_path(), "").unwrap();
+        let config = Config::new(None, false, vec![], None).verify().unwrap();
+        let err_msg = config
+            .create_file(path.as_path(), false)
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!(
+            format!(
+                "The config file you are trying to create `{}` already exist.",
+                path.as_path().display()
+            ),
+            err_msg
+        );
+
+        // cleanup
+        drop(temp_dir)
+    }
+
+    #[test]
     fn test_new_eq_default() {
         let config = Config::new(None, false, vec![], None);
         let other = Config::default();
@@ -302,7 +346,7 @@ mod tests_config_version_1 {
 
     #[test]
     fn test_new_config_to_file_overide_true() {
-        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let temp_dir = TempDir::new("test_new_config_to_file_overide_true").unwrap();
         let config_name = temp_dir.path().join("test_config.json");
         Config::new_config_to_file(&config_name, false).unwrap();
         Config::new_config_to_file(&config_name, true).unwrap();
@@ -315,7 +359,7 @@ mod tests_config_version_1 {
 
     #[test]
     fn test_new_config_to_file_overide_false() {
-        let temp_dir = TempDir::new("sma_config_test").unwrap();
+        let temp_dir = TempDir::new("test_new_config_to_file_overide_false").unwrap();
         let config_name = temp_dir.path().join("test_config.json");
         Config::new_config_to_file(&config_name, false).unwrap();
 
@@ -451,10 +495,8 @@ mod tests_config_version_1 {
 
     #[test]
     fn test_validate_cwd_err_is_not_dir() {
-        let existing_dir = TempDir::new("test_validate_cwd_err_is_not_dir")
-            .unwrap()
-            .into_path();
-        let file = existing_dir.join("test.aaa");
+        let temp_dir = TempDir::new("test_validate_cwd_err_is_not_dir").unwrap();
+        let file = temp_dir.path().join("test.aaa");
         File::create(&file).unwrap();
         let config = Config {
             cwd: Some(file.to_path_buf()),
@@ -467,7 +509,10 @@ mod tests_config_version_1 {
                 file.display()
             ),
             config.validate_cwd().unwrap_err().to_string()
-        )
+        );
+
+        // cleanup
+        drop(temp_dir)
     }
 
     #[test]

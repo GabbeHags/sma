@@ -16,7 +16,7 @@ members = [
     "gui/src-tauri",
     "cli",
     "config",
-    "sma"
+    "sma",
 ]
 default-members = [
     "gui/src-tauri",
@@ -45,6 +45,7 @@ tauri = { version = "1.4.1", features = ["dialog-open", "dialog-save", "dialog-m
 tauri-build = { version = "1.4.0", features = [] }
 winapi = {version = "0.3", features = ["wincon", "winuser"]}
 mslnk = "0.1"
+
 
 # Local dependencies
 cli = {path = "cli"}

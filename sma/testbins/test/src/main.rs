@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 /// First arg is the COMMAND, the rest is operands to the command.
 ///
 /// COMMANDS:
@@ -6,7 +5,7 @@ use std::borrow::BorrowMut;
 ///     WRITE <file> <file content> // Writes a file to <file> with the content <file content>
 ///     SLEEP <time in seconds>     // Sleeps for <time in seconds>
 ///     SPAWN <COMMANDs> stop       // Spawns a new process of it self and gives it commands
-///                                    until stop is found
+///                                 // until stop is found
 use std::cell::{Cell, RefCell};
 use std::path::PathBuf;
 use std::process::{self, Command};
