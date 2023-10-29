@@ -3,7 +3,7 @@ use config::{Config, Verified};
 use std::{
     ffi::OsStr,
     os::windows::process::CommandExt,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Child, Command},
 };
 
@@ -241,25 +241,41 @@ mod test_sma {
         build_test_binary_once!(test, "testbins");
     }
 
-    // #[test]
-    // fn test_shlex() {
-    //     let split = shlex::split("D:/Rust/test.exe DEBUG SLEEP 2").unwrap();
-    //     dbg!(split);
-    //     let split = shlex::split("D:\\Rust\\test.exe DEBUG SLEEP 2").unwrap();
-    //     dbg!(split);
-    //     spawn_process(&[format!("{} DEBUG SLEEP 2",testbin::path_to_test().to_str().unwrap())]).unwrap();
-    //     panic!()
-    // }
-
     #[test]
-    fn test_spawn_processes_fail_bad_executable_path() {
-        let test_bin_path = testbin::path_to_test().into_string().unwrap();
-        // .replace('\\', "/");
+    fn test_spawn_processes_good() {
+        let test_bin_path = testbin::path_to_test()
+            .into_string()
+            .unwrap()
+            .replace('\\', "/");
 
         let config = Config::new(
             None,
             false,
-            vec![format!("{} DEBUG SLEEP 2", test_bin_path.clone())],
+            vec![format!("{} SLEEP 1", test_bin_path.clone())],
+            None,
+        )
+        .verify()
+        .unwrap();
+        let now = std::time::Instant::now();
+        let success = spawn_processes(&config)
+            .unwrap()
+            .iter_mut()
+            .map(|child| child.wait().unwrap().success())
+            .all(|child| child);
+        let after = std::time::Instant::now();
+        assert!(success);
+        let diff_millis = (after - now).as_millis();
+        assert!((1000..1200).contains(&diff_millis))
+    }
+
+    #[test]
+    fn test_spawn_processes_fail_bad_executable_path() {
+        let test_bin_path = testbin::path_to_test().into_string().unwrap();
+
+        let config = Config::new(
+            None,
+            false,
+            vec![format!("{} SLEEP 1", test_bin_path.clone())],
             None,
         )
         .verify()
