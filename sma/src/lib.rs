@@ -9,7 +9,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Context, Ok};
 use sysinfo::{
-    Pid, PidExt, Process, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt,
+    Pid, Process, ProcessRefreshKind, RefreshKind, System,
 };
 
 pub fn run() -> anyhow::Result<()> {

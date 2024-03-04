@@ -1,5 +1,5 @@
 use std::{os::windows::process::CommandExt, process::Command};
-use sysinfo::{Pid, PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt};
+use sysinfo::{Pid, ProcessRefreshKind, RefreshKind, System};
 use winapi::um::{
     wincon::GetConsoleWindow,
     winuser::{ShowWindow, SW_HIDE},
